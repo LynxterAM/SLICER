@@ -1519,7 +1519,7 @@ PageDownloader::PageDownloader(ConfigWizard* parent)
     : ConfigWizardPage(parent, _L("Downloads from URL"), _L("Downloads"))
 {
     const AppConfig* app_config = get_app_config();
-    auto boldfont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    auto boldfont = wxGetApp().bold_font();
     boldfont.SetWeight(wxFONTWEIGHT_BOLD);
 
     append_spacer(VERTICAL_SPACING);
@@ -1763,7 +1763,7 @@ PageVendors::PageVendors(ConfigWizard *parent)
 
     append_text(wxString::Format(_L("Pick another vendor supported by %s"), SLIC3R_APP_NAME) + ":");
 
-    auto boldfont = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    auto boldfont = wxGetApp().bold_font();
     boldfont.SetWeight(wxFONTWEIGHT_BOLD);
     // Copy vendors from bundle map to vector, so we can sort it without case sensitivity
     std::vector<std::pair<std::wstring, const VendorProfile*>> vendors;

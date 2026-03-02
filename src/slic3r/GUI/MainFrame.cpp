@@ -145,6 +145,7 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_S
 {
     // Fonts were created by the DPIFrame constructor for the monitor, on which the window opened.
     wxGetApp().update_fonts(this);
+    this->SetFont(wxGetApp().normal_font());
 /*
 #ifndef __WXOSX__ // Don't call SetFont under OSX to avoid name cutting in ObjectList 
     this->SetFont(this->normal_font());

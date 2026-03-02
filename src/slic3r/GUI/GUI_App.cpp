@@ -2298,9 +2298,9 @@ void GUI_App::update_fonts(const MainFrame *main_frame)
      */
 	if (main_frame == nullptr)
 		main_frame = this->mainframe;
-    m_normal_font   = main_frame->normal_font();
-    m_small_font    = m_normal_font;
-    m_bold_font     = main_frame->normal_font().Bold();
+    m_small_font.SetPointSize(main_frame->normal_font().GetPointSize());
+    m_bold_font.SetPointSize(main_frame->normal_font().GetPointSize());
+    m_normal_font.SetPointSize(main_frame->normal_font().GetPointSize());
     m_link_font     = m_bold_font.Underlined();
     m_em_unit       = main_frame->em_unit();
     m_code_font.SetPointSize(m_normal_font.GetPointSize());
