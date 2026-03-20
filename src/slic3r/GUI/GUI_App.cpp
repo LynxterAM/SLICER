@@ -91,6 +91,7 @@
 #include "CalibrationTempDialog.hpp"
 #include "CalibrationRetractionDialog.hpp"
 #include "CalibrationPressureAdvDialog.hpp"
+#include "ConfigWizard.hpp"
 #include "ConfigSnapshotDialog.hpp"
 #include "CreateMMUTiledCanvas.hpp"
 #include "FreeCADDialog.hpp"
@@ -379,11 +380,13 @@ private:
 
             // credits infornation
             credits = "\n" + title + " " +
-                _L("is based on PrusaSlicer by Prusa Research.") + "\n\n" +
-                _L("PrusaSlicer is based on Slic3r by Alessandro Ranellucci and the RepRap community.") + "\n\n" +
+                _L("is based on SuperSlicer.") + "\n\n" +
+                _L("SuperSlicer is based on PrusaSlicer and Slic3r")  + "\n" +
+                _L("made by Prusa Research and the RepRap community.") + "\n\n" +
                 _L("Licensed under GNU AGPLv3.");
 
-            title_font = version_font = credits_font = init_font;
+            version_font = credits_font = init_font;
+            title_font = wxFont(wxFontInfo().FaceName("GT America Expanded Light"));
         }
     } 
     m_constant_text;
@@ -2274,9 +2277,27 @@ int GUI_App::get_max_font_pt_size()
 
 void GUI_App::init_fonts()
 {
+    static bool first_run = true;
+    if (first_run) {
+        first_run = false;
+        if (!wxFont::AddPrivateFont(Slic3r::resources_dir() + "/fonts/GT-America-Expanded-Light.otf")) // this needs to be done just once per the application run
+        {
+            wxLogError("Could not add a private font");
+            return;
+        }
+        if (!wxFont::AddPrivateFont(Slic3r::resources_dir() + "/fonts/Outfit-ExtraBold.ttf")) // this needs to be done just once per the application run
+        {
+            wxLogError("Could not add a private font");
+            return;
+        }
+    }
+
     m_small_font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
     m_bold_font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT).Bold();
     m_normal_font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    //m_small_font = wxFont(wxFontInfo().FaceName("GT America Expanded Light"));
+    //m_bold_font = wxFont(wxFontInfo().FaceName("GT America Expanded Light").Bold());
+    //m_normal_font = wxFont(wxFontInfo().FaceName("GT America Expanded Light"));
 
 #ifdef __WXMAC__
     m_small_font.SetPointSize(11);
@@ -4015,7 +4036,8 @@ bool GUI_App::run_wizard(ConfigWizard::RunReason reason, ConfigWizard::StartPage
             return false;
     }
 #endif
-    // if nothing installed, show the installatino dialog first
+#ifndef ALLOW_PRUSA_FIRST
+    // if nothing installed, show the installation dialog first
     bool is_synch = this->preset_updater->is_synch;
     if (bypass_bundle_install == RVBM_ALWAYS ||
         (bypass_bundle_install == RVBM_IF_EMPTY && this->preset_updater->count_installed() == 0)) {
@@ -4028,6 +4050,44 @@ bool GUI_App::run_wizard(ConfigWizard::RunReason reason, ConfigWizard::StartPage
             [&](bool is_ok) { if (is_ok) run_wizard(reason, start_page, RunVendorBundleManage::RVBM_NEVER); });
         return false;
     }
+#else //ALLOW_PRUSA_FIRST
+    if (this->preset_updater->count_installed() == 0 && bypass_bundle_install != RVBM_NEVER) {
+        this->preset_updater->reload_all_vendors();
+        // don't run the bundle manager but just install the vendor version
+        this->preset_updater->sync_async([this, reason, start_page](int update_count) {
+            bool found;
+            std::lock_guard<std::recursive_mutex> guard(this->preset_updater->all_vendors_mutex);
+            for (const auto &[id, vendor] : this->preset_updater->all_vendors) {
+                if (vendor.profile.id == ALLOW_PRUSA_FIRST) {
+                    found = true;
+                    if (vendor.best != nullptr) {
+                        this->preset_updater->install_vendor(ALLOW_PRUSA_FIRST, *vendor.best,
+                                                             [this, reason, start_page](const std::string &error_msg) {
+                                                                 run_wizard(reason, start_page,
+                                                                            RunVendorBundleManage::RVBM_NEVER);
+                                                             });
+                    } else {
+                        //TODO: failsafe
+                        for (auto &vendor_loc : vendor.available_profiles) {
+                            if (vendor_loc.local_file.find(Slic3r::resources_dir()) != std::string::npos) {
+                                this->preset_updater->install_vendor(ALLOW_PRUSA_FIRST, vendor_loc,
+                                                                     [this, reason,
+                                                                      start_page](const std::string &error_msg) {
+                                                                         run_wizard(reason, start_page,
+                                                                                    RunVendorBundleManage::RVBM_NEVER);
+                                                                     });
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+            assert(found);
+        });
+        return false;
+    }
+#endif
 
     ConfigWizard *wizard = nullptr;
     {

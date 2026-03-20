@@ -25,7 +25,7 @@ class PresetUpdater;
 
 namespace GUI {
 
-//#define ALLOW_PRUSA_FIRST "PrusaResearch"
+#define ALLOW_PRUSA_FIRST "Lynxter"
 namespace DownloaderUtils {
     class Worker : public wxBoxSizer
     {
