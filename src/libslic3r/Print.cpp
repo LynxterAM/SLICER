@@ -131,6 +131,7 @@ bool Print::invalidate_state_by_config_options(const ConfigOptionResolver& /* ne
         "feature_gcode",
         "fan_percentage",
         "fan_printer_min_speed",
+        "filament_chamber",
         "filament_colour",
         "filament_compressibility_factor",
         "filament_custom_variables",

@@ -2027,6 +2027,18 @@ void PrintConfigDef::init_fff_params()
     def->is_vector_extruder = true;
     def->set_default_value(new ConfigOptionFloats { 60 });
 
+    def = this->add("filament_chamber", coInts);
+    def->label = L("Filament Chamber");
+    def->full_label = L("Filament storage temperature");
+    def->category = OptionCategory::cooling;
+    def->tooltip = L("Temperature in the storage chamber of the filament.");
+    def->sidetext = L("°C");
+    def->min = 0;
+    def->max = 300;
+    def->mode = comExpert | comSuSi;
+    def->is_vector_extruder = true;
+    def->set_default_value(new ConfigOptionInts{ 0 });
+
     def = this->add("filament_colour", coStrings);
     def->label = L("Color");
     def->full_label = L("Filament color");
@@ -10357,6 +10369,7 @@ std::unordered_set<std::string> prusa_export_to_remove_keys = {
 "fan_speedup_overhangs",
 "fan_speedup_time",
 "feature_gcode",
+"filament_chamber",
 "filament_cooling_zone_pause",
 "filament_custom_variables",
 "filament_dip_extraction_speed",

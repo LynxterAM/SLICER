@@ -939,6 +939,7 @@ static std::vector<std::string> s_Preset_print_options {
 };
 
 static std::vector<std::string> s_Preset_filament_options {
+        "filament_chamber", 
         "filament_colour", 
         "filament_custom_variables",
         "filament_diameter", "filament_type", "filament_soluble", "filament_notes",

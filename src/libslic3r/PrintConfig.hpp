@@ -1300,6 +1300,7 @@ PRINT_CONFIG_CLASS_DERIVED_DEFINE(
     ((ConfigOptionStrings,              extruder_colour))
     //((ConfigOptionBools,                fan_always_on))
     ((ConfigOptionFloats,               fan_below_layer_time))
+    ((ConfigOptionInts,                 filament_chamber))
     ((ConfigOptionStrings,              filament_colour))
     ((ConfigOptionStrings,              filament_custom_variables))
     ((ConfigOptionStrings,              filament_notes))

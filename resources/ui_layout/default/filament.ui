@@ -19,6 +19,7 @@ group:Temperature °C
 		setting:id$0:first_layer_bed_temperature
 		setting:id$0:label$Other layers:bed_temperature
 	end_line
+	setting:id$0:filament_chamber
 	setting:id$0:chamber_temperature
 	setting:id$0:label$Idle:idle_temperature
 group:Filament properties
