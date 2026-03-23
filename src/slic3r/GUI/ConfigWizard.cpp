@@ -852,6 +852,7 @@ void PageMaterials::check_and_update_presets(bool force_reload_presets /*= false
     wizard_p()->update_materials(materials->technology);
 //    if (force_reload_presets)
         reload_presets();
+        select_all(true);
 }
 
 void PageMaterials::on_paint()
@@ -2314,13 +2315,14 @@ void ConfigWizardIndex::on_paint(wxPaintEvent &evt)
     index_height = std::max(index_height, bg.GetHeight() + em_w / 2);
 
     wxSize virtual_size = GetVirtualSize();
-    if (virtual_size.GetWidth() != index_width && virtual_size.GetHeight() != index_height) {
+    if (virtual_size.GetWidth() != index_width || virtual_size.GetHeight() != index_height) {
         SetVirtualSize(index_width, index_height);
     }
 
     if (GetMinSize().x < index_width) {
         CallAfter([this, index_width]() {
             SetMinSize(wxSize(index_width, GetMinSize().y));
+            GetParent()->Layout();
             Refresh();
         });
     }
@@ -2437,7 +2439,8 @@ void ConfigWizard::priv::load_pages()
 
     index->clear();
 
-    index->add_page(page_welcome);
+    if (page_welcome)
+        index->add_page(page_welcome);
 #ifdef ALLOW_PRUSA_FIRST
     // Printers
     if (page_fff)
@@ -2445,7 +2448,8 @@ void ConfigWizard::priv::load_pages()
     if (page_msla)
         index->add_page(page_msla);
     if (!only_sla_mode) {
-        index->add_page(page_vendors);
+        if (page_vendors)
+            index->add_page(page_vendors);
 
         // Copy pages names from map to vector, so we can sort it without case sensitivity
         std::vector<std::pair<std::wstring, std::string>> sorted_vendors;
@@ -2470,20 +2474,24 @@ void ConfigWizard::priv::load_pages()
     }
 #endif
 
-        index->add_page(page_custom);
-        if (page_custom->custom_wanted()) {
-            index->add_page(page_firmware);
-            index->add_page(page_bed);
-            index->add_page(page_bvolume);
-            index->add_page(page_diams);
-            index->add_page(page_temps);
+        if (page_custom) {
+            index->add_page(page_custom);
+            if (page_custom->custom_wanted()) {
+                index->add_page(page_firmware);
+                index->add_page(page_bed);
+                index->add_page(page_bvolume);
+                index->add_page(page_diams);
+                index->add_page(page_temps);
+            }
         }
-   
+
         // Filaments & Materials
-        if (any_fff_selected) { index->add_page(page_filaments); }
+        if (any_fff_selected && page_filaments) { index->add_page(page_filaments); }
 
         // Filaments page if only custom printer is selected
-        if (!any_fff_selected && (custom_printer_selected || custom_printer_in_bundle) && (get_app_config()->get("no_templates") == "0")) {
+        if (page_filaments &&
+            (!any_fff_selected && (custom_printer_selected || custom_printer_in_bundle) &&
+             (get_app_config()->get("no_templates") == "0"))) {
             update_materials(T_ANY);
             index->add_page(page_filaments);
         }
@@ -2495,13 +2503,18 @@ void ConfigWizard::priv::load_pages()
     // there should to be selected at least one printer
     btn_finish->Enable(any_fff_selected || any_sla_selected || custom_printer_selected || custom_printer_in_bundle);
 
-    index->add_page(page_update);
-    index->add_page(page_downloader);
-    index->add_page(page_reload_from_disk);
+    if (page_update)
+        index->add_page(page_update);
+    if (page_downloader)
+        index->add_page(page_downloader);
+    if (page_reload_from_disk)
+        index->add_page(page_reload_from_disk);
 #ifdef _WIN32
-    index->add_page(page_files_association);
+    if (page_files_association)
+        index->add_page(page_files_association);
 #endif // _WIN32
-    index->add_page(page_mode);
+    if (page_mode)
+        index->add_page(page_mode);
 
     index->go_to(former_active);   // Will restore the active item/page if possible
 
@@ -2619,7 +2632,9 @@ void ConfigWizard::priv::set_start_page(ConfigWizard::StartPage start_page)
 #else
             if(pages_vendors.empty())
             {
-                index->go_to(page_welcome);
+                if (page_welcome) {
+                    index->go_to(page_welcome);
+                }
             }
             else
             {
@@ -2637,8 +2652,10 @@ void ConfigWizard::priv::set_start_page(ConfigWizard::StartPage start_page)
             btn_finish->SetFocus();
             break;
         default:
-            index->go_to(page_welcome);
-            btn_next->SetFocus();
+            if (page_fff) {
+                index->go_to(page_fff);
+                btn_finish->SetFocus();
+            }
             break;
     }
 }
@@ -2719,15 +2736,20 @@ void ConfigWizard::priv::update_materials(Technology technology)
             for (const auto &filament : bundle.preset_bundle->filaments) {
                 // Iterate printers in all bundles
                 for (const auto &printer : bundle.preset_bundle->printers) {
-					if (!printer.is_visible || printer.printer_technology() != ptFFF)
-						continue;
+                    if (!printer.is_visible || printer.printer_technology() != ptFFF)
+                        continue;
                     // Filter out inapplicable printers
-					if (is_compatible_with_printer(PresetWithVendorProfile(filament, filament.vendor), PresetWithVendorProfile(printer, printer.vendor)))
+                    if (is_compatible_with_printer(PresetWithVendorProfile(filament, filament.vendor),
+                                                   PresetWithVendorProfile(printer, printer.vendor))) {
                         add_material(filaments, aliases_fff, filament, &printer);
-				}
+                        //filament.
+                    }
+                }
                 // template filament bundle has no printers - filament would be never added
-                if(bundle.vendor_profile && bundle.vendor_profile->templates_profile && bundle.preset_bundle->printers.begin() == bundle.preset_bundle->printers.end())
+                if (bundle.vendor_profile && bundle.vendor_profile->templates_profile &&
+                    bundle.preset_bundle->printers.begin() == bundle.preset_bundle->printers.end()) {
                     add_material(filaments, aliases_fff, filament);
+                }
             }
         }
     }
@@ -2740,7 +2762,7 @@ void ConfigWizard::priv::update_materials(Technology technology)
         for (const auto& [name, bundle] : bundles) {
             for (const auto &material : bundle.preset_bundle->sla_materials) {
                 // Iterate printers in all bundles
-				// For now, we only allow the profiles to be compatible with another profiles inside the same bundle.
+                // For now, we only allow the profiles to be compatible with another profiles inside the same bundle.
                 for (const auto& printer : bundle.preset_bundle->printers) {
                     if(!printer.is_visible || printer.printer_technology() != ptSLA)
                         continue;
@@ -2892,7 +2914,7 @@ bool ConfigWizard::priv::on_bnt_finish()
 {
     wxBusyCursor wait;
 
-    if (!page_downloader->on_finish_downloader()) {
+    if (page_downloader && !page_downloader->on_finish_downloader()) {
         index->go_to(page_downloader);
         return false;
     }
@@ -3146,7 +3168,7 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
     if (preferred_pt == ptSLA && !wxGetApp().may_switch_to_SLA_preset(caption))
         return false;
 
-    bool check_unsaved_preset_changes = page_welcome->reset_user_profile();
+    bool check_unsaved_preset_changes = page_welcome ? page_welcome->reset_user_profile() : false;
     if (check_unsaved_preset_changes)
         header = _L("All user presets will be deleted.");
     int act_btns = ActionButtons::KEEP;
@@ -3192,8 +3214,8 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
 #endif
 #ifdef __linux__
     // Desktop integration on Linux
-    BOOST_LOG_TRIVIAL(debug) << "ConfigWizard::priv::apply_config integrate_desktop" << page_welcome->integrate_desktop()  << " perform_registration_linux " << page_downloader->m_downloader->get_perform_registration_linux();
-    if (page_welcome->integrate_desktop())
+    BOOST_LOG_TRIVIAL(debug) << "ConfigWizard::priv::apply_config integrate_desktop" << page_welcome ? page_welcome->integrate_desktop() : "  -No welcome page- " << " perform_registration_linux " << page_downloader->m_downloader->get_perform_registration_linux();
+    if (page_welcome && page_welcome->integrate_desktop())
         DesktopIntegrationDialog::perform_desktop_integration();
     if (page_downloader->m_downloader->get_perform_registration_linux())
         DesktopIntegrationDialog::perform_downloader_desktop_integration();
@@ -3215,7 +3237,7 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
             snapshot = false;
             break;
         case ConfigWizard::RR_USER:
-            snapshot = page_welcome->reset_user_profile();
+            snapshot = page_welcome && page_welcome->reset_user_profile();
             snapshot_reason = Snapshot::SNAPSHOT_USER;
             break;
     }
@@ -3242,7 +3264,7 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
     }
 #endif
 
-    if (page_welcome->reset_user_profile()) {
+    if (page_welcome && page_welcome->reset_user_profile()) {
         BOOST_LOG_TRIVIAL(info) << "Resetting user profiles...";
         preset_bundle->reset(true);
     }
@@ -3350,16 +3372,16 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
 
     app_config->set_vendors(appconfig_new);
 
-    app_config->set("notify_release", page_update->version_check ? "all" : "none");
-    app_config->set("preset_update", page_update->preset_update ? "1" : "0");
-    app_config->set("export_sources_full_pathnames", page_reload_from_disk->full_pathnames ? "1" : "0");
+    app_config->set("notify_release", page_update ? (page_update->version_check ? "all" : "none") : "release");
+    app_config->set("preset_update", page_update ? (page_update->preset_update ? "1" : "0") : "1");
+    app_config->set("export_sources_full_pathnames", page_reload_from_disk && page_reload_from_disk->full_pathnames ? "1" : "0");
 
 #ifdef _WIN32
-    app_config->set("associate_3mf", page_files_association->associate_3mf() ? "1" : "0");
-    app_config->set("associate_stl", page_files_association->associate_stl() ? "1" : "0");
+    app_config->set("associate_3mf", page_files_association && page_files_association->associate_3mf() ? "1" : "0");
+    app_config->set("associate_stl", page_files_association && page_files_association->associate_stl() ? "1" : "0");
 //    app_config->set("associate_gcode", page_files_association->associate_gcode() ? "1" : "0");
 
-    if (wxGetApp().is_editor()) {
+    if (wxGetApp().is_editor() && page_files_association) {
         if (page_files_association->associate_3mf())
             wxGetApp().associate_3mf_files();
         if (page_files_association->associate_stl())
@@ -3371,7 +3393,9 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
 //    }
 #endif // _WIN32
 
-    page_mode->serialize_mode(app_config);
+    if (page_mode) {
+        page_mode->serialize_mode(app_config);
+    }
 
     // Reloading the configs after some modifications were done to PrusaSlicer.ini.
     // Just perform the substitutions silently, as the substitutions were already presented to the user on application start-up
@@ -3381,7 +3405,7 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
         preset_bundle->load_presets(*app_config, ForwardCompatibilitySubstitutionRule::EnableSilentDisableSystem, 
                                     {preferred_model, preferred_variant, first_added_filament, first_added_sla_material});
 
-    if (!only_sla_mode && page_custom->custom_wanted() && page_custom->is_valid_profile_name()) {
+    if (!only_sla_mode && page_custom && page_custom->custom_wanted() && page_custom->is_valid_profile_name()) {
         // if unsaved changes was not cheched till this moment
         if (!check_unsaved_preset_changes && 
             !wxGetApp().check_and_keep_current_preset_changes(caption, _L("Custom printer was installed and it will be activated."), act_btns, &apply_keeped_changes))
@@ -3522,7 +3546,8 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
     wxGetApp().SetWindowVariantForButton(p->btn_finish);
     wxGetApp().SetWindowVariantForButton(p->btn_cancel);
 
-    p->add_page(p->page_welcome = new PageWelcome(this));
+    //p->page_welcome = new PageWelcome(this);
+    //p->add_page(p->page_welcome);
 
 #ifdef ALLOW_PRUSA_FIRST
     const auto prusa_it = p->bundles.find(ALLOW_PRUSA_FIRST);
@@ -3542,27 +3567,27 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
         p->page_fff->is_primary_printer_page = true;
     }
 
-    if (std::find(vendor_prusa->technologies.begin(), vendor_prusa->technologies.end(), PrinterTechnology::ptSLA) != vendor_prusa->technologies.end()) {
-        //p->page_msla = new PagePrinters(this, _L("Prusa MSLA Technology Printers"), "Prusa MSLA", *vendor_prusa, 0, T_SLA);
-        wxString name = _L(vendor_prusa->name);
-        name.Replace("{technology}", tech_to_string.at(PrinterTechnology::ptSLA));
-        wxString description = _L(vendor_prusa->full_name);
-        description.Replace("{technology}", tech_to_string.at(PrinterTechnology::ptSLA));
-        p->page_msla = new PagePrinters(this, description, name, *vendor_prusa, 0, T_SLA);
-        p->add_page(p->page_msla);
-        if (!p->page_fff) {
-            p->only_sla_mode = true; // not sure
-            p->page_msla->is_primary_printer_page = true;
-        }
-    }
+    //if (std::find(vendor_prusa->technologies.begin(), vendor_prusa->technologies.end(), PrinterTechnology::ptSLA) != vendor_prusa->technologies.end()) {
+    //    //p->page_msla = new PagePrinters(this, _L("Prusa MSLA Technology Printers"), "Prusa MSLA", *vendor_prusa, 0, T_SLA);
+    //    wxString name = _L(vendor_prusa->name);
+    //    name.Replace("{technology}", tech_to_string.at(PrinterTechnology::ptSLA));
+    //    wxString description = _L(vendor_prusa->full_name);
+    //    description.Replace("{technology}", tech_to_string.at(PrinterTechnology::ptSLA));
+    //    p->page_msla = new PagePrinters(this, description, name, *vendor_prusa, 0, T_SLA);
+    //    p->add_page(p->page_msla);
+    //    if (!p->page_fff) {
+    //        p->only_sla_mode = true; // not sure
+    //        p->page_msla->is_primary_printer_page = true;
+    //    }
+    //}
 
-    if (!p->only_sla_mode) {
-        // Pages for 3rd party vendors
-        p->create_3rdparty_pages();   // Needs to be done _before_ creating PageVendors
-        p->add_page(p->page_vendors = new PageVendors(this));
-        p->add_page(p->page_custom = new PageCustom(this));
-        p->custom_printer_selected = p->page_custom->custom_wanted();
-    }
+    //if (!p->only_sla_mode) {
+    //    // Pages for 3rd party vendors
+    //    p->create_3rdparty_pages();   // Needs to be done _before_ creating PageVendors
+    //    p->add_page(p->page_vendors = new PageVendors(this));
+    //    p->add_page(p->page_custom = new PageCustom(this));
+    //    p->custom_printer_selected = p->page_custom->custom_wanted();
+    //}
 #else
     std::vector<std::string> sorted_vendors;
     for (const auto &vendor : p->bundles) sorted_vendors.push_back(vendor.first);
@@ -3591,23 +3616,23 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
         p->add_page(p->page_filaments = new PageMaterials(this, &p->filaments,
             _L("Filament Profiles Selection"), _L("Filaments"), _L("Type:") ));
 
-    p->add_page(p->page_sla_materials = new PageMaterials(this, &p->sla_materials,
-        _L("SLA Material Profiles Selection") + " ", _L("SLA Materials"), _L("Type:") ));
+    //p->add_page(p->page_sla_materials = new PageMaterials(this, &p->sla_materials,
+    //    _L("SLA Material Profiles Selection") + " ", _L("SLA Materials"), _L("Type:") ));
 
-    p->add_page(p->page_custom   = new PageCustom(this));
-    
-    p->add_page(p->page_update   = new PageUpdate(this));
-    p->add_page(p->page_downloader = new PageDownloader(this));
-    p->add_page(p->page_reload_from_disk = new PageReloadFromDisk(this));
+    //p->add_page(p->page_custom   = new PageCustom(this));
+    //
+    //p->add_page(p->page_update   = new PageUpdate(this));
+    //p->add_page(p->page_downloader = new PageDownloader(this));
+    //p->add_page(p->page_reload_from_disk = new PageReloadFromDisk(this));
 #ifdef _WIN32
-    p->add_page(p->page_files_association = new PageFilesAssociation(this));
+    //p->add_page(p->page_files_association = new PageFilesAssociation(this));
 #endif // _WIN32
-    p->add_page(p->page_mode     = new PageMode(this));
-    p->add_page(p->page_firmware = new PageFirmware(this));
-    p->add_page(p->page_bed      = new PageBedShape(this));
-    p->add_page(p->page_bvolume  = new PageBuildVolume(this));
-    p->add_page(p->page_diams    = new PageDiameters(this));
-    p->add_page(p->page_temps    = new PageTemperatures(this));
+    //p->add_page(p->page_mode     = new PageMode(this));
+    //p->add_page(p->page_firmware = new PageFirmware(this));
+    //p->add_page(p->page_bed      = new PageBedShape(this));
+    //p->add_page(p->page_bvolume  = new PageBuildVolume(this));
+    //p->add_page(p->page_diams    = new PageDiameters(this));
+    //p->add_page(p->page_temps    = new PageTemperatures(this));
     
     p->load_pages();
     p->index->go_to(size_t{0});
@@ -3661,7 +3686,9 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
         PagePrinters *page_printers = dynamic_cast<PagePrinters*>(page);
         if (page_printers)
             page_printers->select_all(true, false);
-        p->index->go_to(p->page_update);
+        if (p->page_update) {
+            p->index->go_to(p->page_update);
+        }
 #endif
     });
 

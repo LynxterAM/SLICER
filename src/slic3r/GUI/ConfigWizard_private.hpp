@@ -406,9 +406,9 @@ struct PageCustom: ConfigWizardPage
             delete profile_name_editor;
     }
 
-    bool        custom_wanted()         const { return cb_custom->GetValue(); }
-    bool        is_valid_profile_name() const { return profile_name_editor->is_valid();}
-    std::string profile_name()          const { return profile_name_editor->preset_name(); }
+    bool        custom_wanted()         const { return cb_custom && cb_custom->GetValue(); }
+    bool        is_valid_profile_name() const { return profile_name_editor && profile_name_editor->is_valid();}
+    std::string profile_name()          const { return profile_name_editor ? profile_name_editor->preset_name() : ""; }
 
 private:
     static const char* default_profile_name;
