@@ -392,7 +392,7 @@ void AppConfig::set_defaults()
         set("use_legacy_3DConnexion", "0");
 
     if (get("dark_color_mode").empty())
-        set("dark_color_mode", "0");
+        set("dark_color_mode", "1");
 
     if (get("sys_menu_enabled").empty())
         set("sys_menu_enabled", "1");
@@ -969,13 +969,6 @@ std::string AppConfig::load(const std::string &path)
     // Figure out if datadir has legacy presets
     auto ini_ver = Semver::parse(get("version"));
     m_legacy_datadir = false;
-    if (ini_ver) {
-        m_orig_version = *ini_ver;
-        // Make 1.40.0 alphas compare well
-        ini_ver->set_metadata(std::nullopt);
-        ini_ver->set_prerelease(std::nullopt);
-        m_legacy_datadir = ini_ver < Semver(1, 40, 0, 0);
-    }
 
     // Legacy conversion
     if (m_mode == EAppMode::Editor) {
