@@ -4486,7 +4486,7 @@ void GUI_App::app_updater(bool from_user)
 {
     DownloadAppData app_data = m_app_updater->get_app_data();
     Semver current_version = *Semver::parse(SLIC3R_VERSION_FULL);
-    if (from_user && app_data.version <= current_version)
+    if (from_user && (app_data.version <= current_version || app_data.url.empty()))
     {
         BOOST_LOG_TRIVIAL(info) << "There is no newer version online.";
         MsgNoAppUpdates no_update_dialog; 
@@ -4497,6 +4497,10 @@ void GUI_App::app_updater(bool from_user)
 
     assert(!app_data.url.empty());
     assert(!app_data.target_path.empty());
+
+    if (app_data.url.empty() || app_data.target_path.empty()) {
+        return;
+    }
 
     // dialog with new version info
     AppUpdateAvailableDialog dialog(current_version, app_data.version, from_user);

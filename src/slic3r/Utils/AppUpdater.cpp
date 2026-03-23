@@ -397,8 +397,8 @@ void AppUpdater::priv::parse_version_string(const std::string &constbody) {
     std::regex matcher("[0-9]+\\.[0-9]+(\\.[0-9]+)*(-[A-Za-z0-9]+)?(\\+[A-Za-z0-9]+)?");
 
     Semver current_version(SLIC3R_VERSION_FULL);
-    Semver best_pre(1, 0, 0, 0);
-    Semver best_release(1, 0, 0, 0);
+    Semver best_pre(0, 0, 0, 0);
+    Semver best_release(0, 0, 0, 0);
     std::string best_pre_url;
     std::string best_pre_assets_url;
     std::string best_release_url;
