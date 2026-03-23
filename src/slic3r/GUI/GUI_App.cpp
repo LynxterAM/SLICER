@@ -291,7 +291,8 @@ public:
 
         // load bitmap for logo
         int logo_size = lround(width * 0.25);
-        wxBitmapBundle *logo_bmp_ptr = get_bmp_bundle(wxGetApp().logo_name(), 0, logo_size);
+        //wxBitmapBundle *logo_bmp_ptr = get_bmp_bundle(wxGetApp().logo_name(), 0, logo_size);
+        wxBitmapBundle *logo_bmp_ptr = get_bmp_bundle(wxGetApp().logo_name(), width * 0.8);
         if (logo_bmp_ptr == nullptr)
             return;
         
@@ -399,7 +400,7 @@ private:
         // As default we use a system font for current display.
         // Scale fonts in respect to banner width
 
-        int text_banner_width = lround(0.4 * m_main_bitmap.GetWidth()) - roundl(get_margin()); // banner_width - margins
+        int text_banner_width = lround(0.35 * m_main_bitmap.GetWidth()) - roundl(get_margin()); // banner_width - margins
 
         int default_width_title = GetTextExtent(m_constant_text.title).GetX();
         float title_font_scale = (float)text_banner_width / default_width_title;
