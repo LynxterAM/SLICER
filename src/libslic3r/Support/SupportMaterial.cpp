@@ -1930,7 +1930,8 @@ static inline SupportGeneratorLayer* detect_bottom_contacts(
     layer_new.height_block = ((object.config().support_material_contact_distance_type.value == zdPlane) ? object.layers()[layer_id + 1]->height : layer_new.height);
     layer_new.print_z = slicing_params.soluble_interface ? layer.upper_layer->print_z :
         layer.print_z + layer_new.height_block + slicing_params.gap_object_support;
-    layer_new.bottom_z = layer.print_z;
+    layer_new.bottom_z = slicing_params.soluble_interface ? layer.print_z :
+                                                            (layer.print_z + slicing_params.gap_object_support);
     //recompute layer height to be in synch with print & bottom
     layer_new.height = layer_new.print_z - layer_new.bottom_z;
     layer_new.idx_object_layer_below = layer_id;
