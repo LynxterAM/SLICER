@@ -6442,6 +6442,16 @@ void PrintConfigDef::init_fff_params()
     def->aliases = { "support_material_contact_distance_bottom" }; //since PS 2.4
     def->set_default_value(new ConfigOptionFloatOrPercent(0.2,false));
 
+    def = this->add("support_material_bottom_interface_expansion", coFloatOrPercent);
+    def->label = L("Bottom interface expansion");
+    def->category = OptionCategory::support;
+    def->tooltip = L("Expanion of the bottom interface for better stability."
+        "\nCan be percentage of the interface line width.");
+    def->sidetext = L("mm or %");
+    def->min = 0;
+    def->mode = comAdvancedE | comSuSi;
+    def->set_default_value(new ConfigOptionFloatOrPercent(100, true));
+
     def = this->add("support_material_enforce_layers", coInt);
     def->label = L("Enforce support for the first");
     def->category = OptionCategory::support;
@@ -10579,6 +10589,7 @@ std::unordered_set<std::string> prusa_export_to_remove_keys = {
 "support_material_interface_angle_increment",
 "support_material_interface_fan_speed",
 "support_material_interface_layer_height",
+"support_material_bottom_interface_expansion",
 "support_material_bottom_interface_pattern",
 "support_material_layer_height",
 "thin_perimeters_all",

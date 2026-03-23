@@ -1936,10 +1936,16 @@ static inline SupportGeneratorLayer* detect_bottom_contacts(
     layer_new.height = layer_new.print_z - layer_new.bottom_z;
     layer_new.idx_object_layer_below = layer_id;
     layer_new.bridging = !slicing_params.soluble_interface;
-    //FIXME how much to inflate the bottom surface, as it is being extruded with a bridging flow? The following line uses a normal flow.
-    layer_new.polygons = expand(touching, double(support_params.support_material_flow.scaled_width()), SUPPORT_SURFACES_OFFSET_PARAMETERS);
+    // how much to inflate the bottom surface, for better stability
+    if (support_params.bottom_interface_expansion.value > 0) {
+        coordf_t expansion = scale_d(support_params.bottom_interface_expansion.get_abs_value(
+            support_params.support_material_bottom_interface_flow.width()));
+        layer_new.polygons = expand(touching, expansion, SUPPORT_SURFACES_OFFSET_PARAMETERS);
+        layer_new.polygons = intersection(top, layer_new.polygons);
+    } else {
+        layer_new.polygons = touching;
+    }
     ensure_valid(layer_new.polygons, support_params.resolution);
-    for (Polygon &poly : layer_new.polygons);
 
     if (! slicing_params.soluble_interface) {
         // Walk the top surfaces, snap the top of the new bottom surface to the closest top of the top surface,
