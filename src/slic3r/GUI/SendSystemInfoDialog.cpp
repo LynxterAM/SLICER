@@ -609,7 +609,7 @@ SendSystemInfoDialog::SendSystemInfoDialog(wxWindow* parent)
     wxString html = GUI::format_wxstr(
             "<html><body bgcolor=%1%><font color=%2%>"
             "<table><tr><td>"
-            "<img src = \"" + resources_dir() + "/icons/" SLIC3R_APP_KEY "_192px.png\" />"
+            "<img src = \"" + resources_dir() + "/icons/" + wxGetApp().dark_icon_name() + ".png\" />"
             "</td><td align=\"left\">"
             + text0 + "<br / ><br / >"
             + text1 + "<br /><br />"

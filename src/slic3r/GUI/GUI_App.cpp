@@ -316,8 +316,9 @@ public:
         // draw the (white) labels inside of our black box (at the left of the splashscreen)
         memDc.SetTextForeground(wxColour(180, 180, 180));
 
-        memDc.SetFont(m_constant_text.title_font);
-        memDc.DrawLabel(m_constant_text.title, banner_rect, wxALIGN_TOP | wxALIGN_LEFT);
+        // title is in the logo
+        //memDc.SetFont(m_constant_text.title_font);
+        //memDc.DrawLabel(m_constant_text.title, banner_rect, wxALIGN_TOP | wxALIGN_LEFT);
 
         int title_height = memDc.GetTextExtent(m_constant_text.title).GetY();
         banner_rect.SetTop(banner_rect.GetTop() + title_height);
@@ -856,6 +857,18 @@ static void generic_exception_handle()
         BOOST_LOG_TRIVIAL(error) << boost::format("Uncaught exception: %1%") % ex.what();
         throw;
     }
+}
+
+std::string GUI_App::logo_name() const {
+    return std::string(is_editor() ? SLIC3R_APP_KEY : GCODEVIEWER_APP_KEY) + std::string("_logo");
+}
+
+std::string GUI_App::dark_icon_name() const {
+    return std::string(is_editor() ? SLIC3R_APP_KEY : GCODEVIEWER_APP_KEY) + std::string("");
+}
+
+std::string GUI_App::light_icon_name() const {
+    return std::string(is_editor() ? SLIC3R_APP_KEY : GCODEVIEWER_APP_KEY) + std::string("");
 }
 
 void GUI_App::post_init()
