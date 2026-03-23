@@ -1290,12 +1290,15 @@ void Sidebar::jump_to_option(size_t selected)
         if ((opt.tags & mode) != mode) {
             wxString your_modes = _L("Your current tags:");
             wxString option_modes = _L("Option tags:");
-            for (AppConfig::Tag& t : get_app_config()->tags()) {
-                if ((t.tag & mode) == t.tag) {
-                    your_modes += " " + _(t.name);
-                }
-                if ((t.tag & opt.tags) == t.tag) {
-                    option_modes += " " + _(t.name);
+            {
+                std::lock_guard<std::recursive_mutex> lk(get_app_config()->config_lock);
+                for (const AppConfig::Tag& t : get_app_config()->tags()) {
+                    if ((t.tag & mode) == t.tag) {
+                        your_modes += " " + _(t.name);
+                    }
+                    if ((t.tag & opt.tags) == t.tag) {
+                        option_modes += " " + _(t.name);
+                    }
                 }
             }
             //ask if we need to switch to this mode

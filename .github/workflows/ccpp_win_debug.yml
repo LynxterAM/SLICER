@@ -174,5 +174,5 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: nightly_win64_debug
+        name: debug_${{ github.event.repository.name }}-win64
         path: build/package/

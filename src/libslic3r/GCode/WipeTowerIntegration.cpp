@@ -99,10 +99,13 @@ std::string WipeTowerIntegration::append_tcr(GCodeGenerator &gcodegen, const Wip
                                          || ! needs_toolchange   // this is just finishing the tower with no toolchange
                                          || is_ramming
                                          || will_go_down);       // don't dig into the print
-    if (should_travel_to_tower) {
+    if (should_travel_to_tower || m_has_force_travel) {
         const Point xy_point = wipe_tower_point_to_object_point(gcodegen, start_pos);
-        gcode += gcodegen.retract_and_wipe();
-        gcodegen.m_avoid_crossing_perimeters.use_external_mp_once();
+        if (should_travel_to_tower) {
+            gcode += gcodegen.retract_and_wipe();
+            gcodegen.m_avoid_crossing_perimeters.use_external_mp_once();
+            need_unretract = true;
+        }
         const std::string comment{"Travel to a Wipe Tower"};
         Polyline travel_path = gcodegen.travel_to(gcode, xy_point, ExtrusionRole::Mixed);
         gcodegen.write_travel_to(gcode, travel_path, comment);
@@ -111,7 +114,6 @@ std::string WipeTowerIntegration::append_tcr(GCodeGenerator &gcodegen, const Wip
         if (wipe_tower_z == -1.) {
             will_go_down = current_z;
         }
-        need_unretract = true;
     } else {
         // When this is multiextruder printer without any ramming, we can just change
         // the tool without travelling to the tower.
@@ -125,7 +127,7 @@ std::string WipeTowerIntegration::append_tcr(GCodeGenerator &gcodegen, const Wip
         gcode += gcodegen.writer().travel_to_z((wipe_tower_z == -1.) ? current_z : wipe_tower_z, "Travel down to the last wipe tower layer.");
         need_unretract = true;
     } else {
-        gcode += std::string("; current z: ") + std::to_string(gcodegen.writer().get_unlifted_position().z()) +" ; with lift: " + std::to_string(gcodegen.writer().get_position().z());
+        gcode += std::string("; current z: ") + std::to_string(gcodegen.writer().get_unlifted_position().z()) +" ; with lift: " + std::to_string(gcodegen.writer().get_position().z()) + "\n";
     }
     assert(is_approx(current_z, gcodegen.writer().get_unlifted_position().z()));
     //now that we traveld and are ready to unretract, unlift.

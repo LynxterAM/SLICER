@@ -511,11 +511,29 @@ ExtrusionEntityCollection PerimeterGenerator::_traverse_loops_classic(const Para
         if (loop.children.empty()) {
             loop_role = ExtrusionLoopRole(loop_role | ExtrusionLoopRole::elrFirstLoop);
         }
-        if (params.config.external_perimeters_vase.value && params.config.external_perimeters_first.value && is_external) {
-            if (params.config.external_perimeters_first_force.value ||
-                (loop.is_contour && params.config.external_perimeters_nothole.value) ||
-                (!loop.is_contour && params.config.external_perimeters_hole.value)) {
-                loop_role = (ExtrusionLoopRole)(loop_role | ExtrusionLoopRole::elrVase);
+        if (is_external &&
+            (params.region_setting.has_many_config(&params.config.seam_slope_type) ||
+             params.region_setting.get_solo_config(&params.config.seam_slope_type).get_int() != int32_t(SeamScarfType::None))) {
+            this->throw_if_canceled();
+            for (auto const &[opt_values, areas] :
+                 params.region_setting.get_areas(&params.config.seam_slope_type)) {
+                // first test if applicable
+                SeamScarfType scarf_type = SeamScarfType(opt_values.get_int(&params.config.seam_slope_type));
+                if (scarf_type != SeamScarfType::None &&
+                    opt_values.get_bool(&params.config.external_perimeters_first)){
+                    // should be okay.
+                    // next test
+                    if (opt_values.get_bool(&params.config.external_perimeters_first_force) ||
+                        (loop.is_contour &&
+                         opt_values.get_bool(&params.config.external_perimeters_nothole)) ||
+                        (!loop.is_contour && opt_values.get_bool(&params.config.external_perimeters_hole) && scarf_type == SeamScarfType::All)) {
+                        // does it intersect?
+                        if (areas.is_accept_all() || !intersection(loop.polygon, areas.expolys).empty()) {
+                            // then apply the tag
+                            loop_role = (ExtrusionLoopRole) (loop_role | ExtrusionLoopRole::elrVase);
+                        }
+                    }
+                }
             }
         }
 
@@ -1777,11 +1795,6 @@ ExtrusionEntityCollection PerimeterGenerator::_traverse_extrusions(const Paramet
         if (!pg_extrusion.is_contour) {
             loop_role = (ExtrusionLoopRole)(loop_role | ExtrusionLoopRole::elrHole);
         }
-        if (params.config.external_perimeters_vase.value && params.config.external_perimeters_first.value && is_external) {
-            if ((pg_extrusion.is_contour && params.config.external_perimeters_nothole.value) || (!pg_extrusion.is_contour && params.config.external_perimeters_hole.value)) {
-                loop_role = (ExtrusionLoopRole)(loop_role | ExtrusionLoopRole::elrVase);
-            }
-        }
 
         // fuzzy_extrusion_line() don't work. I can use fuzzy_paths() anyway, not a big deal.
         //if (pg_extrusion.fuzzify)
@@ -1887,6 +1900,47 @@ ExtrusionEntityCollection PerimeterGenerator::_traverse_extrusions(const Paramet
 
         //set to overhang speed if any chunk is overhang
         this->_enforce_speed_overhangs(paths, -1);
+
+        // check for seam_slope_type tag need to be applied (need the extrusion)
+        if (is_external &&
+            (params.region_setting.has_many_config(&params.config.seam_slope_type) ||
+             params.region_setting.get_solo_config(&params.config.seam_slope_type).get_int() != int32_t(SeamScarfType::None))) {
+            this->throw_if_canceled();
+            for (auto const &[opt_values, areas] :
+                 params.region_setting.get_areas(&params.config.seam_slope_type)) {
+                // first test if applicable
+                SeamScarfType scarf_type = SeamScarfType(opt_values.get_int(&params.config.seam_slope_type));
+                if (scarf_type != SeamScarfType::None &&
+                    opt_values.get_bool(&params.config.external_perimeters_first)){
+                    // should be okay.
+                    // next test
+                    if (opt_values.get_bool(&params.config.external_perimeters_first_force) ||
+                        (pg_extrusion.is_contour &&
+                         opt_values.get_bool(&params.config.external_perimeters_nothole)) ||
+                        (!pg_extrusion.is_contour && opt_values.get_bool(&params.config.external_perimeters_hole) && scarf_type == SeamScarfType::All)) {
+                        // does a part is inside?
+                        bool inside = areas.is_accept_all();
+                        if (!inside) {
+                            for (const ExtrusionPath &path : paths) {
+                                if (!intersection_pl(path.as_polyline().to_polyline(), areas.expolys).empty()) {
+                                    inside = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (inside) {
+                            // then apply the tag
+                            loop_role = (ExtrusionLoopRole) (loop_role | ExtrusionLoopRole::elrVase);
+                        }
+                    }
+                }
+            }
+        }
+        if (params.config.seam_slope_type.value != SeamScarfType::None && params.config.external_perimeters_first.value && is_external) {
+            if ((pg_extrusion.is_contour && params.config.external_perimeters_nothole.value) || (!pg_extrusion.is_contour && params.config.external_perimeters_hole.value)) {
+                loop_role = (ExtrusionLoopRole)(loop_role | ExtrusionLoopRole::elrVase);
+            }
+        }
 
         // Append paths to collection.
         if (!paths.empty()) {
@@ -3298,6 +3352,9 @@ ProcessSurfaceResult PerimeterGenerator::process_arachne(const Parameters &param
     ExPolygons last = (ext_displacement != 0)
         ? offset_ex(surface.expolygon.simplify_p(scaled_resolution),  -ext_displacement)
         : union_ex(surface.expolygon.simplify_p(scaled_resolution));
+    // bb for checking out-of-bounds points.
+    BoundingBox srf_bb;
+    for (ExPolygon &expo : last) srf_bb.merge(expo.contour.points);
 
     //increase surface for milling_post-process
     if (this->mill_extra_size > SCALED_EPSILON) {
@@ -3326,7 +3383,7 @@ ProcessSurfaceResult PerimeterGenerator::process_arachne(const Parameters &param
                 const ExPolygons *upper_slices = this->upper_slices;
                 // has multiple or only one?
                 ExPolygons cliped_upper_slices;
-                if (!areas.expolys.empty()) {
+                if (!areas.is_accept_all()) {
                     // clip upper_slices
                     cliped_upper_slices = diff_ex({surface.expolygon}, areas.expolys);
                     if (!this->upper_slices->empty()) {
@@ -3562,20 +3619,19 @@ ProcessSurfaceResult PerimeterGenerator::process_arachne(const Parameters &param
         }
     }
 #endif
-    
+
     // hack to fix points that go to the moon. https://github.com/supermerill/SuperSlicer/issues/4032
     // get max dist possible
-    BoundingBox bb;
-    for (ExPolygon &expo : last) bb.merge(expo.contour.points);
-    const coordf_t max_dist = bb.min.distance_to_square(bb.max);
+    const distsqrf_t max_dist_sqr = srf_bb.min.distance_to_square(srf_bb.max);
     //detect astray points and delete them
     for (Arachne::VariableWidthLines &perimeter : perimeters) {
         this->throw_if_canceled();
         for (auto it_extrusion = perimeter.begin(); it_extrusion != perimeter.end();) {
-            Point last_point = bb.min;
-            for (auto it_junction = it_extrusion->junctions.begin(); it_junction != it_extrusion->junctions.end();) {
-                coordf_t dist = it_junction->p.distance_to_square(last_point);
-                if (dist > max_dist) {
+            assert(!it_extrusion->junctions.empty());
+            Point last_point = it_extrusion->junctions.front().p;
+            for (auto it_junction = it_extrusion->junctions.begin()+1; it_junction != it_extrusion->junctions.end();) {
+                distsqrf_t dist_sqr = it_junction->p.distance_to_square(last_point);
+                if (dist_sqr > max_dist_sqr) {
                     it_junction = it_extrusion->junctions.erase(it_junction);
                 } else {
                     last_point = it_junction->p;
@@ -3593,22 +3649,23 @@ ProcessSurfaceResult PerimeterGenerator::process_arachne(const Parameters &param
     loop_number = int(perimeters.size());
 
 #ifdef ARACHNE_DEBUG
-        {
-            static int iRun = 0;
-            export_perimeters_to_svg(debug_out_path("arachne-perimeters-%d-%d.svg", layer_id, iRun++), to_polygons(last), perimeters, union_ex(wallToolPaths.getInnerContour()));
-        }
+    {
+        static int iRun = 0;
+        export_perimeters_to_svg(debug_out_path("arachne-perimeters-%d-%d.svg", layer_id, iRun++), to_polygons(last), perimeters, union_ex(wallToolPaths.getInnerContour()));
+    }
 #endif
 
+#if _DEBUG
     // All closed ExtrusionLine should have the same the first and the last point.
-    // But in rare cases, Arachne produce ExtrusionLine marked as closed but without
-    // equal the first and the last point.
-    assert([&perimeters = std::as_const(perimeters)]() -> bool {
-        for (const Arachne::VariableWidthLines& perimeter : perimeters)
-            for (const Arachne::ExtrusionLine& el : perimeter)
-                if (el.is_closed && el.junctions.front().p != el.junctions.back().p)
-                    return false;
-        return true;
-    }());
+    for (Arachne::VariableWidthLines &perimeter : perimeters) {
+        for (Arachne::ExtrusionLine &el : perimeter) {
+            if (el.is_closed && el.junctions.front().p != el.junctions.back().p) {
+                assert(false);
+                el.is_closed = false;
+            }
+        }
+    }
+#endif
 
     //build perimeter_boundary
     bool has_tw = false;
@@ -4204,7 +4261,7 @@ void PerimeterGenerator::process(// Input:
                 } else {
                     // no flow: use the biggest and sipliest bb so all the extrusion will be inside.
                     offseted.clear();
-                    if (areas.expolys.empty()) {
+                    if (areas.is_accept_all()) {
                         // only one region, go big.
                         offseted = {get_extents(srf_to_use.expolygon.contour).polygon()};
                     } else {
@@ -5787,7 +5844,7 @@ ProcessSurfaceResult PerimeterGenerator::process_classic(const Parameters &     
                         const ExPolygons *upper_slices = this->upper_slices;
                         // has multiple or only one?
                         ExPolygons cliped_upper_slices;
-                        if (!areas.expolys.empty()) {
+                        if (!areas.is_accept_all()) {
                             // clip upper_slices
                             cliped_upper_slices = diff_ex({surface.expolygon}, areas.expolys);
                             if (!this->upper_slices->empty()) {
@@ -5846,29 +5903,25 @@ ProcessSurfaceResult PerimeterGenerator::process_classic(const Parameters &     
             //first, find loops and try to extract a perimeter from them.
             size_t looked_gap = gaps.size();
             for (size_t gap_idx = 0; gap_idx < looked_gap; gap_idx++) {
-                ExPolygon& expoly = gaps[gap_idx];
+                const ExPolygon& expoly = gaps[gap_idx];
                 if (expoly.holes.size() >= 1) {
                     //this is a a sort of a loop
                     //try to see if it's possible to add a "perimeter"
-                    //ExPolygons contour_expolygon = offset_ex(expoly, -(float)(params.get_perimeter_spacing() / 2), ClipperLib::jtMiter, 3);
-                    ExPolygons new_gaps =
-                        intersection_ex(expoly,
-                            offset_ex(expoly.contour, -(float) (params.get_perimeter_spacing())));
-                    if (new_gaps.size() == 1 && new_gaps.front().holes.size() >= 1) {
+                    ExPolygons new_contour = offset_ex(expoly, -(float)(params.get_perimeter_spacing() / 2), ClipperLib::jtMiter, 3);
+                    // note: don't unoffset only the contour, or you'll have issues with holes validating impossible perimeter (supermerill/SuperSlicer/issues/4696).
+                    if (new_contour.size() == 1 && new_contour.front().holes.size() >= 1) {
+                        //create our perimeter area
+                        ExPolygons contour_gap_area = offset_ex(new_contour.front(), (float)(params.get_perimeter_spacing() / 2));
                         // create centerline
-                        Polygons new_contour = offset(new_gaps.front().contour,
-                                                      (float) (params.get_perimeter_spacing() / 2));
+                        new_contour.front().holes.clear();
+                        contour_gap_area = diff_ex(contour_gap_area, offset_ex(new_contour, - (float)(params.get_perimeter_spacing() / 2)));
                         // there was an offset, simplify to avoid too small sections
                         new_contour = new_contour.front().simplify(SCALED_EPSILON);
-                        ExPolygons extents_new_perimeter = offset_ex(new_gaps.front().contour, (float) (params.get_perimeter_spacing()));
-                        if (new_contour.size() == 1 && extents_new_perimeter.size() == 1) {
+                        if (new_contour.size() == 1 && contour_gap_area.size() == 1) {
                             // OK
-                            //create our periemter area (can also use offset over the polyline from new_contour)
-                            perimeter_gaps_ex = union_ex(perimeter_gaps_ex, diff(extents_new_perimeter.front().contour, new_gaps.front().contour));
+                            perimeter_gaps_ex = union_ex(perimeter_gaps_ex, contour_gap_area);
                             // gap fill outside of the new contour
-                            append(gaps, ensure_valid(diff_ex(expoly, extents_new_perimeter), resolution));
-                            // gapfill after the perimeter
-                            append(gaps, ensure_valid(std::move(new_gaps), resolution));
+                            append(gaps, ensure_valid(diff_ex(expoly, contour_gap_area), resolution));
                             // remove our old gapfill
                             gaps.erase(gaps.begin() + gap_idx);
                             looked_gap--;
@@ -5881,7 +5934,7 @@ ProcessSurfaceResult PerimeterGenerator::process_classic(const Parameters &     
                             }
                             assert(contours.size() == contour_count);
                             // Add the new perimeter
-                            contours[contours_size].emplace_back(new_contour.front(), contours_size,
+                            contours[contours_size].emplace_back(new_contour.front().contour, contours_size,
                                                                  true, has_steep_overhang, fuzzify_gapfill);
                         }
                     }
@@ -7201,6 +7254,7 @@ const std::vector<t_config_option_keys> Parameters::perimeter_keys({
     {"overhangs", "overhangs_speed", "overhangs_width_speed", "overhangs_flow_ratio", "overhangs_width"},
     {"gap_fill_enabled"},
     {"gap_fill_no_overhang"},
+    {"seam_slope_type", "external_perimeters_first", "external_perimeters_first_force", "external_perimeters_nothole", "external_perimeters_hole"},
     });
 
 }

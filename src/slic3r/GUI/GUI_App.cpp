@@ -1076,7 +1076,7 @@ void choose_app_dir(GUI_App &app) {
             same_version.push_back(&installed);
         } else {
             old_versions.push_back(&installed);
-            if (boost::filesystem::exists(installed.exe_path) && boost::filesystem::equivalent(binary_file().parent_path(), installed.exe_path)) {
+            if (boost::filesystem::exists(installed.exe_path) && boost::filesystem::equivalent(install_path(), installed.exe_path)) {
                 same_exe_path.push_back(&installed);
             }
         }
@@ -1147,7 +1147,7 @@ void choose_app_dir(GUI_App &app) {
     for (int i = 1; already_used_name.find(my_default_installation.installed_name) != already_used_name.end(); ++i) {
         my_default_installation.installed_name = format("%1%_(%2%)", SLIC3R_BUILD_ID, i);
     }
-    my_default_installation.exe_path = binary_file().parent_path();
+    my_default_installation.exe_path = install_path();
     my_default_installation.other_keys["exe_path_relative"] = "0";
     my_default_installation.config_path = my_default_installation.installed_name;
     my_default_installation.other_keys["config_path_relative"] = "1";
@@ -1179,30 +1179,28 @@ void choose_app_dir(GUI_App &app) {
             if (it_is_legacy != old_versions[choice]->other_keys.end() && it_is_legacy->second == "1") {
                 boost::filesystem::path dir(app.app_config->get_root_data_dir());
                 assert(dir == old_versions[choice]->get_config_path(app.app_config->get_root_data_dir()));
+                auto copy_or_create =
+                    [&dir, &path](std::string_view dir_name) {
+                    if (boost::filesystem::exists(dir / dir_name))
+                        boost::filesystem::copy(dir / dir_name, path / dir_name,
+                                                boost::filesystem::copy_options::update_existing |
+                                                    boost::filesystem::copy_options::recursive);
+                    else
+                        boost::filesystem::create_directory(path / dir_name);
+                    };
                 boost::filesystem::copy(dir / (SLIC3R_APP_KEY ".ini"), path / (SLIC3R_APP_KEY ".ini"),
                                       boost::filesystem::copy_options::update_existing);
-                boost::filesystem::copy(dir / "cache", path / "cache",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "filament", path / "filament",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "physical_printer", path / "physical_printer",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "print", path / "print",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "printer", path / "printer",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "shapes", path / "shapes",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "sla_material", path / "sla_material",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "sla_print", path / "sla_print",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "snapshots", path / "snapshots",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "ui_layout", path / "ui_layout",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
-                boost::filesystem::copy(dir / "vendor", path / "vendor",
-                                      boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
+                copy_or_create("cache");
+                copy_or_create("filament");
+                copy_or_create("physical_printer");
+                copy_or_create("print");
+                copy_or_create("printer");
+                copy_or_create("shapes");
+                copy_or_create("sla_material");
+                copy_or_create("sla_print");
+                copy_or_create("snapshots");
+                copy_or_create("ui_layout");
+                copy_or_create("vendor");
             } else {
                 boost::filesystem::copy(old_versions[choice]->get_config_path(app.app_config->get_root_data_dir()), path,
                                       boost::filesystem::copy_options::update_existing | boost::filesystem::copy_options::recursive);
@@ -1992,6 +1990,7 @@ std::map<ConfigOptionMode, std::string> GUI_App::get_mode_default_palette()
     tag_color_map[ConfigOptionMode::comAdvanced] = "#FFDC00";
     tag_color_map[ConfigOptionMode::comExpert] = "#E70000";
     //get from color.ini
+    std::lock_guard<std::recursive_mutex> lk(get_app_config()->config_lock);
     for (Tag app_config->tags()) {
         tag_color_map[tag] = color_hash
     }
@@ -2436,7 +2435,7 @@ const std::string GUI_App::get_html_bg_color(wxWindow* html_parent)
 std::string GUI_App::get_first_mode_btn_color(ConfigOptionMode mode_id) const
 {
     assert(0 <= size_t(mode_id));
-                           
+    std::lock_guard<std::recursive_mutex> lk(get_app_config()->config_lock);
     for (const AppConfig::Tag& tag : get_app_config()->tags()) {
         // get the first good tag.
         if ((tag.tag & mode_id) == tag.tag) {
@@ -2449,9 +2448,11 @@ std::string GUI_App::get_first_mode_btn_color(ConfigOptionMode mode_id) const
 std::string GUI_App::get_last_mode_btn_color(ConfigOptionMode mode_id) const
 {
     assert(0 <= size_t(mode_id));
-    assert(size_t(mode_id)< get_app_config()->tags().size());
-    for (size_t idx_p1 = get_app_config()->tags().size(); idx_p1 > 0; --idx_p1) {
-        const AppConfig::Tag& tag = get_app_config()->tags()[idx_p1-1];
+    std::lock_guard<std::recursive_mutex> lk(get_app_config()->config_lock);
+    const std::vector<AppConfig::Tag> &tags = get_app_config()->tags();
+    assert(size_t(mode_id) < tags.size());
+    for (size_t idx_p1 = tags.size() - 1; idx_p1 < tags.size(); --idx_p1) {
+        const AppConfig::Tag& tag = tags[idx_p1];
         // get the first good tag.
         if ((tag.tag & mode_id) == tag.tag) {
             // store the pointer so we can return a valid reference.
@@ -2466,6 +2467,7 @@ std::map<ConfigOptionMode, wxColour> GUI_App::get_mode_palette() const
 {
     std::map<ConfigOptionMode, wxColour> ret_map;
     //if(size_t(mode_id) < m_mode_palette.size()
+    std::lock_guard<std::recursive_mutex> lk(get_app_config()->config_lock);
     for (const AppConfig::Tag& tag : get_app_config()->tags()) {
         ret_map[tag.tag] = wxColor(tag.color_hash);
     }
@@ -3297,7 +3299,7 @@ void GUI_App::update_mode()
 void GUI_App::add_config_menu(wxMenuBar *menu)
 {
     auto local_menu = new wxMenu();
-    wxWindowID config_id_base = wxWindow::NewControlId(int(ConfigMenuCnt + Slic3r::GUI::get_app_config()->tags().size()*2));
+    wxWindowID config_id_base = wxWindow::NewControlId(int(ConfigMenuCnt + Slic3r::GUI::get_app_config()->tags().size() * 2));
 
     const wxString config_wizard_name = _(ConfigWizard::name(true));
     const wxString config_wizard_tooltip = from_u8((boost::format(_u8L("Run %s")) % config_wizard_name).str());
@@ -3329,6 +3331,7 @@ void GUI_App::add_config_menu(wxMenuBar *menu)
         local_menu->AppendSeparator();
         mode_menu = new wxMenu();
         int config_menu_idx = 0;
+        std::lock_guard<std::recursive_mutex> lk(get_app_config()->config_lock);
         for (const AppConfig::Tag& tag : Slic3r::GUI::get_app_config()->tags()) {
             mode_menu->AppendCheckItem(config_id_base + ConfigMenuCnt + config_menu_idx, _(tag.name), _(tag.description));
             Bind(wxEVT_UPDATE_UI, [this, tag](wxUpdateUIEvent& evt) { evt.Check((get_mode() & tag.tag) == tag.tag); }, config_id_base + ConfigMenuCnt + config_menu_idx);
@@ -3518,6 +3521,7 @@ void GUI_App::add_config_menu(wxMenuBar *menu)
     using std::placeholders::_1;
 
     if (mode_menu != nullptr) {
+        std::lock_guard<std::recursive_mutex> lk(get_app_config()->config_lock);
         auto modefn = [this](ConfigOptionMode mode, wxCommandEvent&) { if (get_mode() != mode) save_mode(mode); };
         int config_menu_idx = 0;
         for (const AppConfig::Tag& tag : Slic3r::GUI::get_app_config()->tags()) {
@@ -4454,16 +4458,19 @@ void GUI_App::associate_bgcode_files()
 
 void GUI_App::on_version_read(wxCommandEvent& evt)
 {
-    app_config->set("version_online", into_u8(evt.GetString()));
-    std::optional<Slic3r::Semver> version_online = Semver::parse(into_u8(evt.GetString()));
     std::string opt = app_config->get("notify_release");
+    std::optional<Semver> version_online = Semver::parse(into_u8(evt.GetString()));
     if (!version_online || this->plater_ == nullptr) {
         return;
-    } else if (!m_app_updater->get_triggered_by_user() && opt != "all" && (opt != "release" || version_online->prerelease() == nullptr)) {
+    } else if (!m_app_updater->get_triggered_by_user() &&
+               (opt == "none" || (opt == "release" && version_online->prerelease()))) {
         BOOST_LOG_TRIVIAL(info) << "Version online: " << evt.GetString() << ". User does not wish to be notified.";
         return;
     }
-    if (*Semver::parse(SLIC3R_VERSION_FULL) >= *version_online) {
+    std::optional<Semver> lastest_download = Semver::parse(app_config->get("version_online_seen"));
+    std::optional<Semver> current_version = Semver::parse(SLIC3R_VERSION_FULL);
+    assert(current_version);
+    if (*version_online <= *current_version || (lastest_download && *version_online <= *lastest_download)) {
         if (m_app_updater->get_triggered_by_user())
         {
             std::string text = (*version_online == Semver()) 
@@ -4499,11 +4506,11 @@ void GUI_App::on_version_read(wxCommandEvent& evt)
 void GUI_App::app_updater(bool from_user)
 {
     DownloadAppData app_data = m_app_updater->get_app_data();
-
-    if (from_user && (!app_data.version || *app_data.version <= *Semver::parse(SLIC3R_VERSION) || app_data.url.empty()))
+    Semver current_version = *Semver::parse(SLIC3R_VERSION_FULL);
+    if (from_user && (app_data.version <= current_version || app_data.url.empty()))
     {
         BOOST_LOG_TRIVIAL(info) << "There is no newer version online.";
-        MsgNoAppUpdates no_update_dialog;
+        MsgNoAppUpdates no_update_dialog; 
         no_update_dialog.ShowModal();
         return;
 
@@ -4517,18 +4524,22 @@ void GUI_App::app_updater(bool from_user)
     }
 
     // dialog with new version info
-    AppUpdateAvailableDialog dialog(*Semver::parse(SLIC3R_VERSION), *app_data.version, from_user);
+    AppUpdateAvailableDialog dialog(current_version, app_data.version, from_user);
     auto dialog_result = dialog.ShowModal();
     // checkbox "do not show again"
     if (dialog.disable_version_check()) {
         app_config->set("notify_release", "none");
+        app_config->set("version_online_seen", "");
     }
     // Doesn't wish to update
     if (dialog_result != wxID_OK) {
+        if (dialog_result == wxID_NO) {
+            app_config->set("version_online_seen", app_data.version.to_string());
+        }
         return;
     }
     // dialog with new version download (installer or app dependent on system) including path selection
-    AppUpdateDownloadDialog dwnld_dlg(*app_data.version, app_data.target_path);
+    AppUpdateDownloadDialog dwnld_dlg(app_data.version, app_data.target_path);
     dialog_result = dwnld_dlg.ShowModal();
     //  Doesn't wish to download
     if (dialog_result != wxID_OK) {
