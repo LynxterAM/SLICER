@@ -863,15 +863,15 @@ static void generic_exception_handle()
 }
 
 std::string GUI_App::logo_name() const {
-    return std::string(is_editor() ? SLIC3R_APP_KEY : GCODEVIEWER_APP_KEY) + std::string("_logo");
+    return std::string(is_editor() ? SLIC3R_APP_KEY : /*GCODEVIEWER_APP_KEY*/SLIC3R_APP_KEY) + std::string("_logo");
 }
 
 std::string GUI_App::dark_icon_name() const {
-    return std::string(is_editor() ? SLIC3R_APP_KEY : GCODEVIEWER_APP_KEY) + std::string("_dark");
+    return std::string(is_editor() ? SLIC3R_APP_KEY : SLIC3R_APP_KEY) + std::string("_dark");
 }
 
 std::string GUI_App::light_icon_name() const {
-    return std::string(is_editor() ? SLIC3R_APP_KEY : GCODEVIEWER_APP_KEY) + std::string("_clear");
+    return std::string(is_editor() ? SLIC3R_APP_KEY : SLIC3R_APP_KEY) + std::string("_clear");
 }
 
 void GUI_App::post_init()
@@ -1626,7 +1626,7 @@ bool GUI_App::on_init_inner()
 
         // make a bitmap with dark grey banner on the left side
         if (!bmp.IsOk()) {
-            bmp = SplashScreen::MakeBitmap(get_bmp_bundle(SLIC3R_APP_KEY, 600)->GetPreferredBitmapSizeAtScale(1.0), scrn_scaling);
+            bmp = SplashScreen::MakeBitmap(get_bmp_bundle(dark_icon_name(), 600)->GetPreferredBitmapSizeAtScale(1.0), scrn_scaling);
         }
         scrn = new SplashScreen(bmp, scrn_scaling, wxSPLASH_CENTRE_ON_SCREEN | wxSPLASH_TIMEOUT, 4000, splashscreen_pos, artist);
 
