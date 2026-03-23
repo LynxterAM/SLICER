@@ -12,7 +12,7 @@ set(SLIC3R_APP_PROG_ID "slicer.1")
 # windows guid to identify the app, can begenerated via powershell running [guid]::NewGuid()
 set(SLIC3R_GUID "cf4bad66-be9d-451e-a57e-2527be7d6261")
 # versions
-set(SLIC3R_VERSION_TAG "-beta2+UNKNOWN")
+set(SLIC3R_VERSION_TAG "-beta+UNKNOWN")
 set(SLIC3R_RC_VERSION "1,0,0,0")
 set(SLIC3R_RC_VERSION_DOTS "1.0.0.0")
 message(STATUS "SLIC3R_RC_VERSION = ${SLIC3R_RC_VERSION}")
