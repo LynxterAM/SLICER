@@ -132,7 +132,9 @@ static wxIcon main_frame_icon(GUI_App::EAppMode app_mode)
     }
     return wxIcon(path, wxBITMAP_TYPE_ICO);
 #else // _WIN32
-    return wxIcon(Slic3r::var(app_mode == GUI_App::EAppMode::Editor ? SLIC3R_APP_KEY "_128px.png" : GCODEVIEWER_APP_KEY "_128px.png"), wxBITMAP_TYPE_PNG);
+    wxIcon icon;
+    icon.CopyFromBitmap(get_bmp_bundle(wxGetApp().dark_icon_name(), 128)->GetBitmap(wxSize(128, 128)));
+    return icon;
 #endif // _WIN32
 }
 
