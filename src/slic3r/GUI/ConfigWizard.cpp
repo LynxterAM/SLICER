@@ -1790,7 +1790,7 @@ PageVendors::PageVendors(ConfigWizard *parent)
         /*const*/ bool enabled;
         {
             std::lock_guard<std::recursive_mutex> lk(appconfig.config_lock);
-            const VendorMap &acvendors = appconfig.vendors();
+            const AppConfig::VendorMap &acvendors = appconfig.vendors();
             enabled = acvendors.find(vendor->id) != acvendors.end();
         }
         if (enabled) {
