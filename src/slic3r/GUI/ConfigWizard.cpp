@@ -3226,7 +3226,7 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
 #endif
 #ifdef __linux__
     // Desktop integration on Linux
-    BOOST_LOG_TRIVIAL(debug) << "ConfigWizard::priv::apply_config integrate_desktop" << page_welcome ? page_welcome->integrate_desktop() : "  -No welcome page- " << " perform_registration_linux " << page_downloader->m_downloader->get_perform_registration_linux();
+    BOOST_LOG_TRIVIAL(debug) << "ConfigWizard::priv::apply_config integrate_desktop" << (page_welcome ? std::string(page_welcome->integrate_desktop()) : std::string("  -No welcome page- ")) << " perform_registration_linux " << page_downloader->m_downloader->get_perform_registration_linux();
     if (page_welcome && page_welcome->integrate_desktop())
         DesktopIntegrationDialog::perform_desktop_integration();
     if (page_downloader->m_downloader->get_perform_registration_linux())
