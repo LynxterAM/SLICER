@@ -22,6 +22,7 @@ deps/build-linux/*
 .pkg_cache
 CMakeUserPresets.json
 **/bad_*
+githubtoken.ini
 releases/
 # MacOS Ignores
 .DS_Store
