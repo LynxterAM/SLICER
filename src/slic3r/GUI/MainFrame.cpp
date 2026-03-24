@@ -161,11 +161,11 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_S
     default:
     case GUI_App::EAppMode::Editor:
         m_taskbar_icon = std::make_unique<PrusaSlicerTaskBarIcon>(wxTBI_DOCK);
-        m_taskbar_icon->SetIcon(wxIcon(Slic3r::var(SLIC3R_APP_KEY "_256_icns.png"), wxBITMAP_TYPE_PNG), SLIC3R_APP_KEY);
+        m_taskbar_icon->SetIcon(wxIcon(Slic3r::get_icon_file(SLIC3R_APP_KEY "_256_icns.png"), wxBITMAP_TYPE_PNG), SLIC3R_APP_KEY);
         break;
     case GUI_App::EAppMode::GCodeViewer:
         m_taskbar_icon = std::make_unique<GCodeViewerTaskBarIcon>(wxTBI_DOCK);
-        m_taskbar_icon->SetIcon(wxIcon(Slic3r::var(GCODEVIEWER_APP_KEY "-mac_128px.png"), wxBITMAP_TYPE_PNG), GCODEVIEWER_APP_NAME);
+        m_taskbar_icon->SetIcon(wxIcon(Slic3r::get_icon_file(GCODEVIEWER_APP_KEY "-mac_128px.png"), wxBITMAP_TYPE_PNG), GCODEVIEWER_APP_NAME);
         break;
     }
 #endif // __APPLE__
@@ -2922,7 +2922,7 @@ SettingsDialog::SettingsDialog(MainFrame* mainframe)
         SetIcon(wxIcon(szExeFileName, wxBITMAP_TYPE_ICO));
     }
 #else
-    SetIcon(wxIcon(var(SLIC3R_APP_KEY "_128px.png"), wxBITMAP_TYPE_PNG));
+    SetIcon(wxIcon(get_icon_file(SLIC3R_APP_KEY "_128px.png"), wxBITMAP_TYPE_PNG));
 #endif // _WIN32
 
     this->Bind(wxEVT_SHOW, [this](wxShowEvent& evt) {

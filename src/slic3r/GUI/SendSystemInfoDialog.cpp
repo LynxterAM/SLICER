@@ -609,7 +609,7 @@ SendSystemInfoDialog::SendSystemInfoDialog(wxWindow* parent)
     wxString html = GUI::format_wxstr(
             "<html><body bgcolor=%1%><font color=%2%>"
             "<table><tr><td>"
-            "<img src = \"" + resources_dir() + "/icons/" + wxGetApp().dark_icon_name() + ".png\" />"
+            "<img src = \"" + (boost::filesystem::path(icons_dir()) / (wxGetApp().dark_icon_name()).generic_string() + ".png\" />"
             "</td><td align=\"left\">"
             + text0 + "<br / ><br / >"
             + text1 + "<br /><br />"
