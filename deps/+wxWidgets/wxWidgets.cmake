@@ -25,6 +25,7 @@ add_cmake_project(wxWidgets
         -DwxUSE_DETECT_SM=OFF
         -DwxUSE_UNICODE=ON
         -DwxUSE_UNICODE_UTF8=${_unicode_utf8}
+        -DwxUSE_PRIVATE_FONTS=ON
         -DwxUSE_OPENGL=ON
         -DwxUSE_LIBPNG=sys
         -DwxUSE_ZLIB=sys
