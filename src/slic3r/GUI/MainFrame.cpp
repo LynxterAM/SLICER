@@ -1680,7 +1680,7 @@ static wxMenu* generate_help_menu()
     append_menu_item(helpMenu, wxID_ANY, wxString::Format(_L("%s Releases"), SLIC3R_APP_NAME), wxString::Format(_L("Open the %s releases page in your browser"), SLIC3R_APP_NAME),
         [](wxCommandEvent&) { wxGetApp().open_browser_with_warning_dialog(SLIC3R_DOWNLOAD); });
     append_menu_item(helpMenu, wxID_ANY, wxString::Format(_L("%s wiki"), SLIC3R_APP_NAME), wxString::Format(_L("Open the %s wiki in your browser"), SLIC3R_APP_NAME),
-        [](wxCommandEvent&) { wxGetApp().open_browser_with_warning_dialog("https://github.com/" SLIC3R_GITHUB "/wiki"); });
+        [](wxCommandEvent&) { wxGetApp().open_browser_with_warning_dialog(get_app_config()->github_url() + "/wiki"); });
 
     //#        my $versioncheck = $self->_append_menu_item($helpMenu, "Check for &Updates...", "Check for new Slic3r versions", sub{
     //#            wxTheApp->check_version(1);
@@ -1698,7 +1698,7 @@ static wxMenu* generate_help_menu()
     append_menu_item(helpMenu, wxID_ANY, _L("Show &Configuration Folder"), _L("Show user configuration folder (datadir)"),
         [](wxCommandEvent&) { Slic3r::GUI::desktop_open_datadir_folder(); });
     append_menu_item(helpMenu, wxID_ANY, _L("Report an I&ssue"), wxString::Format(_L("Report an issue on %s"), SLIC3R_APP_NAME),
-        [](wxCommandEvent&) { wxGetApp().open_browser_with_warning_dialog("http://github.com/" SLIC3R_GITHUB "/issues/new"); });
+        [](wxCommandEvent&) { wxGetApp().open_browser_with_warning_dialog(get_app_config()->github_url() + "/issues/new"); });
 
 #ifndef __APPLE__
     append_about_menu_item(helpMenu);

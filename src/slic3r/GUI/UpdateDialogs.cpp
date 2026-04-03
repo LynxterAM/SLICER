@@ -39,9 +39,17 @@ namespace Slic3r {
 namespace GUI {
 
 
-static const char* URL_CHANGELOG = "https://github.com/" SLIC3R_GITHUB "/releases";
-static const char* URL_DOWNLOAD = "https://github.com/" SLIC3R_GITHUB "/releases";
-static const char* URL_DEV = "https://github.com/" SLIC3R_GITHUB "/releases/tag/%1%";
+constexpr bool starts_with_http(const char* str) {
+    return str[0] == 'h' && str[1] == 't' && str[2] == 't' && str[3] == 'p';
+}
+
+static const char *URL_CHANGELOG = starts_with_http(SLIC3R_GITHUB) ? SLIC3R_GITHUB "/releases" :
+                                                                     "https://github.com/" SLIC3R_GITHUB "/releases";
+static const char *URL_DOWNLOAD = starts_with_http(SLIC3R_GITHUB) ? SLIC3R_GITHUB "/releases" :
+                                                                    "https://github.com/" SLIC3R_GITHUB "/releases";
+static const char *URL_DEV = starts_with_http(SLIC3R_GITHUB) ? SLIC3R_GITHUB "/releases/tag/%1%" :
+                                                               "https://github.com/" SLIC3R_GITHUB
+                                                               "/releases/tag/%1%";
 
 static const std::string CONFIG_UPDATE_WIKI_URL("https://github.com/prusa3d/PrusaSlicer/wiki/Slic3r-PE-1.40-configuration-update");
 
