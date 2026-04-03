@@ -285,17 +285,19 @@ public:
         if (!m_main_bitmap.IsOk())
             return;
 
+        wxCoord margin = get_margin() * 2;
+
         // draw text to the box at the left of the splashscreen.
         // this box will be 2/5 of the weight of the bitmap, and be at the left.
-        int width = lround(m_main_bitmap.GetWidth() * 0.4);
+        int width = lround(m_main_bitmap.GetWidth() * 0.4 - margin * 2 );
 
         // load bitmap for logo
         int logo_size = lround(width * 0.25);
         //wxBitmapBundle *logo_bmp_ptr = get_bmp_bundle(wxGetApp().logo_name(), 0, logo_size);
-        wxBitmapBundle *logo_bmp_ptr = get_bmp_bundle(wxGetApp().logo_name(), width * 0.8);
+        wxBitmapBundle *logo_bmp_ptr = get_bmp_bundle(wxGetApp().logo_name(), width, 0);
         if (logo_bmp_ptr == nullptr)
             return;
-        
+
 //#ifdef __APPLE__
 //        wxBitmap logo_bmp = logo_bmp_ptr->GetBitmap(logo_bmp_ptr->GetDefaultSize() * mac_max_scaling_factor());
 //#else
@@ -303,10 +305,8 @@ public:
 //#endif
         wxBitmap logo_bmp = logo_bmp_ptr->GetBitmap(logo_bmp_ptr->GetDefaultSize());
 
-        wxCoord margin = get_margin();
-
         wxRect banner_rect(wxPoint(0, logo_bmp.GetSize().y), wxPoint(width, m_main_bitmap.GetHeight()));
-        banner_rect.Deflate(margin, 2 * margin);
+        banner_rect.Deflate(margin);
 
         // use a memory DC to draw directly onto the bitmap
         wxMemoryDC memDc(m_main_bitmap);
@@ -321,9 +321,9 @@ public:
         //memDc.SetFont(m_constant_text.title_font);
         //memDc.DrawLabel(m_constant_text.title, banner_rect, wxALIGN_TOP | wxALIGN_LEFT);
 
-        int title_height = memDc.GetTextExtent(m_constant_text.title).GetY();
-        banner_rect.SetTop(banner_rect.GetTop() + title_height);
-        banner_rect.SetHeight(banner_rect.GetHeight() - title_height);
+        //int title_height = memDc.GetTextExtent(m_constant_text.title).GetY();
+        //banner_rect.SetTop(banner_rect.GetTop() + title_height);
+        //banner_rect.SetHeight(banner_rect.GetHeight() - title_height);
 
         memDc.SetFont(m_constant_text.version_font);
         memDc.DrawLabel(m_constant_text.version, banner_rect, wxALIGN_TOP | wxALIGN_LEFT);
@@ -346,7 +346,7 @@ public:
         int text_height    = memDc.GetTextExtent("text").GetY();
 
         // calculate position for the dynamic text
-        int logo_and_header_height = margin + logo_size + title_height + version_height;
+        int logo_and_header_height = margin + logo_size/* + title_height*/ + version_height;
         m_action_line_y_position = logo_and_header_height + 0.5 * (m_main_bitmap.GetHeight() - margin - credits_height - logo_and_header_height - text_height);
     }
 
@@ -382,9 +382,8 @@ private:
 
             // credits infornation
             credits = "\n" + title + " " +
-                _L("is based on SuperSlicer.") + "\n\n" +
-                _L("SuperSlicer is based on PrusaSlicer and Slic3r")  + "\n" +
-                _L("made by Prusa Research and the RepRap community.") + "\n\n" +
+                _L("is based on SuperSlicer, PrusaSlicer and Slic3r")  + "\n" +
+                _L("made by the RepRap community.") + "\n\n" +
                 _L("Licensed under GNU AGPLv3.");
 
             version_font = credits_font = init_font;
