@@ -273,7 +273,7 @@ void AppConfig::set_defaults()
             set("use_binary_gcode_when_supported", "1");
  
        if (get("notify_release").empty())
-           set("notify_release", "all"); // or "none" or "release"
+           set("notify_release", "release"); // or "none" or "release"
 
         if (get("auto_switch_preview").empty())
             set("auto_switch_preview", "platter");
