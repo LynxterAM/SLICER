@@ -91,10 +91,10 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: rc_${{ github.event.repository.name }}-macOS.tgz
+        name: rc_${{ github.event.repository.name }}-macOS-intel.tgz
         path: build/${{ github.event.repository.name }}-macOS-intel.tgz
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: rc_${{ github.event.repository.name }}-macOS.dmg
+        name: rc_${{ github.event.repository.name }}-macOS-intel.dmg
         path: build/${{ github.event.repository.name }}-macOS-intel.dmg
