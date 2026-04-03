@@ -496,7 +496,7 @@ void PrintConfigDef::init_common_params()
     def = this->add("thumbnails_custom_color", coBool);
     def->label = L("Enforce thumbnail color");
     def->tooltip = L("Enforce a specific color on thumbnails."
-        " If not enforced, their color will be the one defined by the filament.");
+        " If not enforced, their color will be the one defined by the material.");
     def->mode = comExpert | comSuSi;
     def->set_default_value(new ConfigOptionBool(false));
 
@@ -721,7 +721,7 @@ void PrintConfigDef::init_fff_params()
         " This setting allow to have a threshold, enforcing the max speed to this flow."
         " Any lower flow will still use the max speed, creating a difference in mm3/s for these but keeping a high speed for all others."
         "\nTo keep the automatic computation for the Autospeed, but excluding the thin gap fill & thin wall from it, set this setting to 0."
-        "\nCan be a % of the maximum flow (compute from print's autopseed max volumetric flow and filament's max volumetric flow.");
+        "\nCan be a % of the maximum flow (compute from print's autopseed max volumetric flow and material's max volumetric flow.");
     def->sidetext = L("mm3/s or %");
     def->mode = comAdvancedE | comSuSi;
     def->min = 0;
@@ -732,7 +732,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Avoid crossing curled overhangs (Experimental)");
     def->category = OptionCategory::perimeter;
     // TRN PrintSettings: "Avoid crossing curled overhangs (Experimental)"
-    def->tooltip = L("Plan travel moves such that the extruder avoids areas where the filament may be curled up. "
+    def->tooltip = L("Plan travel moves such that the extruder avoids areas where the material may be curled up. "
                    "This is mostly happening on steeper rounded overhangs and may cause a crash with the nozzle. "
                    "This feature slows down both the print and the G-code generation.");
     def->mode = comExpert | comPrusa;
@@ -1168,7 +1168,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Colorprint height");
     def->category = OptionCategory::slicing;
     def->mode = comExpert | comPrusa; // note: hidden setting
-    def->tooltip = L("Heights at which a filament change is to occur. ");
+    def->tooltip = L("Heights at which a material change is to occur. ");
     def->set_default_value(new ConfigOptionFloats { });
 
     def = this->add("compatible_printers", coStrings);
@@ -1371,9 +1371,9 @@ void PrintConfigDef::init_fff_params()
     def->set_default_value(new ConfigOptionFloatOrPercent(0, false));
 
     def = this->add("default_filament_profile", coStrings);
-    def->label = L("Default filament profile");
-    def->tooltip = L("Default filament profile associated with the current printer profile. "
-                   "On selection of the current printer profile, this filament profile will be activated.");
+    def->label = L("Default material profile");
+    def->tooltip = L("Default material profile associated with the current printer profile. "
+                   "On selection of the current printer profile, this material profile will be activated.");
     def->mode = comNone | comPrusa; // note: hidden setting
     def->set_default_value(new ConfigOptionStrings());
     def->cli = ConfigOptionDef::nocli;
@@ -1382,8 +1382,8 @@ void PrintConfigDef::init_fff_params()
     def->label    = L("Default fan speed");
     def->category = OptionCategory::cooling;
     def->tooltip  = L(
-        "Default speed for the fan, to set the speed for features where there is no fan control. Useful for PLA and other low-temp filament."
-        "\nSet 0 to disable the fan by default. Useful for ABS and other high-temp filaments."
+        "Default speed for the fan, to set the speed for features where there is no fan control. Useful for PLA and other low-temp material."
+        "\nSet 0 to disable the fan by default. Useful for ABS and other high-temp materials."
         "\nIf disabled, no fan speed command will be emmited when possible (if a feature set a speed, it won't be reverted).");
     def->mode               = comSimpleAE | comSuSi;
     def->min                = 0;
@@ -1474,10 +1474,10 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("end_filament_gcode", coStrings);
     def->label = L("End G-code");
-    def->full_label = L("Filament end G-code");
+    def->full_label = L("Material end G-code");
     def->category = OptionCategory::customgcode;
     def->tooltip = L("This end procedure is inserted at the end of the output file, before the printer end gcode (and "
-                   "before any toolchange from this filament in case of multimaterial printers). "
+                   "before any toolchange from this material in case of multimaterial printers). "
                    "Note that you can use placeholder variables for all Slic3r settings. "
                    "If you have multiple extruders, the gcode is processed in extruder order.");
     def->multiline = true;
@@ -1485,7 +1485,7 @@ void PrintConfigDef::init_fff_params()
     def->height = 120;
     def->mode = comExpert | comPrusa;
     def->is_vector_extruder = true;
-    def->set_default_value(new ConfigOptionStrings { "; Filament-specific end gcode \n;END gcode for filament\n" });
+    def->set_default_value(new ConfigOptionStrings { "; Material-specific end gcode \n;END gcode for material\n" });
 
     def = this->add("top_fill_pattern", coEnum);
     def->label = L("Top");
@@ -1939,7 +1939,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("extruder_temperature_offset", coFloats);
     def->label = L("Extruder temp offset");
     def->category = OptionCategory::extruders;
-    def->tooltip = L("This offset will be added to all extruder temperatures set in the filament settings."
+    def->tooltip = L("This offset will be added to all extruder temperatures set in the material settings."
         "\nNote that you should set 'M104 S{first_layer_temperature{initial_extruder} + extruder_temperature_offset{initial_extruder}}'"
         "\ninstead of 'M104 S{first_layer_temperature}' in the start_gcode");
     def->sidetext = L("°C");
@@ -1950,7 +1950,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("extruder_fan_offset", coPercents);
     def->label = L("Extruder fan offset");
     def->category = OptionCategory::extruders;
-    def->tooltip = L("This offset wil be added to all fan values set in the filament properties. It won't make them go higher than 100% nor lower than 0%.");
+    def->tooltip = L("This offset wil be added to all fan values set in the material properties. It won't make them go higher than 100% nor lower than 0%.");
     def->sidetext = L("%");
     def->mode = comExpert | comSuSi;
     def->is_vector_extruder = true;
@@ -1971,7 +1971,7 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("This factor changes the amount of flow proportionally. You may need to tweak "
         "this setting to get nice surface finish and correct single wall widths. "
         "Usual values are between 0.9 and 1.1. If you think you need to change this more, "
-        "check filament diameter and your firmware E steps.");
+        "if your material is a filament check your filament diameter and your firmware E steps.");
     def->mode = comSimpleAE | comPrusa;
     def->min = 0;
     def->max = 2;
@@ -1984,8 +1984,8 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("This factor changes the amount of flow proportionally. You may need to tweak "
         "this setting to get nice surface finish and correct single wall widths. "
         "Usual values are between 90% and 110%. If you think you need to change this more, "
-        "check filament diameter and your firmware E steps."
-        " This print setting is multiplied against the extrusion_multiplier from the filament tab."
+        "if your material is a filament check your filament and your firmware E steps."
+        " This print setting is multiplied against the extrusion_multiplier from the material tab."
         " Its only purpose is to offer the same functionality but on a per-object basis."); // TODO: replace "against" with "with"?
     def->sidetext = L("%");
     def->mode = comSimpleAE | comSuSi;
@@ -2054,10 +2054,10 @@ void PrintConfigDef::init_fff_params()
     def->set_default_value(new ConfigOptionFloats { 60 });
 
     def = this->add("filament_chamber", coInts);
-    def->label = L("Filament Chamber");
-    def->full_label = L("Filament storage temperature");
+    def->label = L("Material Chamber");
+    def->full_label = L("Material storage temperature");
     def->category = OptionCategory::cooling;
-    def->tooltip = L("Temperature in the storage chamber of the filament.");
+    def->tooltip = L("Temperature in the storage chamber of the material.");
     def->sidetext = L("°C");
     def->min = 0;
     def->max = 300;
@@ -2067,7 +2067,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_colour", coStrings);
     def->label = L("Color");
-    def->full_label = L("Filament color");
+    def->full_label = L("Material color");
     def->category = OptionCategory::filament;
     def->tooltip = L("This is only used in the Slic3r interface as a visual help.");
     def->gui_type = ConfigOptionDef::GUIType::color;
@@ -2077,7 +2077,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_custom_variables", coStrings);
     def->label = L("Custom variables");
-    def->full_label = L("Custom Filament variables");
+    def->full_label = L("Custom Material variables");
     def->category = OptionCategory::filament;
     def->tooltip = L("You can add data accessible to custom-gcode macros."
         "\nEach line can define one variable."
@@ -2087,7 +2087,7 @@ void PrintConfigDef::init_fff_params()
         "\nA value that only takes values as 'true' or 'false' will be a boolean)"
         "\nEvery other value will be parsed as a string as-is."
         "\nThese variables will be available as an array in the custom gcode (one item per extruder), don't forget to use them with the {current_extruder} index to get the current value."
-        " If a filament has a typo on the variable that change its type, then the parser will convert everything to strings."
+        " If a material has a typo on the variable that change its type, then the parser will convert everything to strings."
         "\nAdvice: before using a variable, it's safer to use the function 'default_XXX(variable_name, default_value)'"
         " (enclosed in bracket as it's a script) in case it's not set. You can replace XXX by 'int' 'bool' 'double' 'string'.");
     def->multiline = true;
@@ -2104,7 +2104,7 @@ void PrintConfigDef::init_fff_params()
     def->category = OptionCategory::width;
     def->tooltip = L("You can increase this to over-extrude on the top layer if there is not enough plastic to make a good fill."
                     "\nThis setting multiply the percentage available in the print setting."
-                    " You should only add the little percentage difference that this filament has versus your main one.");
+                    " You should only add the little percentage difference that this material has versus your main one.");
     def->min = 0;
     def->mode = comExpert | comSuSi;
     def->set_default_value(new ConfigOptionPercents{100});
@@ -2116,15 +2116,15 @@ void PrintConfigDef::init_fff_params()
     def->category = OptionCategory::width;
     def->tooltip = L("You can increase this to over/under-extrude on the first layer if there is not enough / too many plastic because your bed isn't levelled / flat."
                     "\nThis setting multiply the percentage available in the print setting."
-                    " You should only add the little percentage difference that this filament has versus your main one.");
+                    " You should only add the little percentage difference that this material has versus your main one.");
     def->min = 0;
     def->mode = comExpert | comSuSi;
     def->set_default_value(new ConfigOptionPercents{100});
 
     def = this->add("filament_notes", coStrings);
-    def->label = L("Filament notes");
+    def->label = L("Material notes");
     def->category = OptionCategory::notes;
-    def->tooltip = L("You can put your notes regarding the filament here.");
+    def->tooltip = L("You can put your notes regarding the material here.");
     def->multiline = true;
     def->full_width = true;
     def->height = 13;
@@ -2135,8 +2135,8 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_max_speed", coFloats);
     def->label = L("Max speed");
     def->category = OptionCategory::filament;
-    def->tooltip = L("Maximum speed allowed for this filament. Limits the maximum "
-        "speed of a print to the minimum of the print speed and the filament speed. "
+    def->tooltip = L("Maximum speed allowed for this material. Limits the maximum "
+        "speed of a print to the minimum of the print speed and the material speed. "
         "Set zero for no limit.");
     def->sidetext = L("mm/s");
     def->min = 0;
@@ -2147,8 +2147,8 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_max_volumetric_speed", coFloats);
     def->label = L("Max volumetric speed");
     def->category = OptionCategory::filament;
-    def->tooltip = L("Maximum volumetric speed allowed for this filament. Limits the maximum volumetric "
-        "speed of a print to the minimum of print and filament volumetric speed. "
+    def->tooltip = L("Maximum volumetric speed allowed for this material. Limits the maximum volumetric "
+        "speed of a print to the minimum of print and material volumetric speed. "
         "Set zero for no limit.");
     def->sidetext = L("mm³/s");
     def->min = 0;
@@ -2159,8 +2159,8 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_max_wipe_tower_speed", coFloats);
     def->label = L("Max speed on the wipe tower");
     def->tooltip = L("This setting is used to set the maximum speed when extruding inside the wipe tower (use M220)."
-        " In %, set 0 to disable and use the Filament type instead."
-        "\nIf disabled, these filament types will have a defaut value of:"
+        " In %, set 0 to disable and use the Material type instead."
+        "\nIf disabled, these material types will have a defaut value of:"
         "\n - PVA: 80% to 60%"
         "\n - SCAFF: 35%"
         "\n - FLEX: 35%"
@@ -2176,7 +2176,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_loading_speed", coFloats);
     def->label = L("Loading speed");
-    def->tooltip = L("Speed used for loading the filament on the wipe tower. ");
+    def->tooltip = L("Speed used for loading the material on the wipe tower. ");
     def->sidetext = L("mm/s");
     def->min = 0;
     def->mode = comExpert | comPrusa;
@@ -2217,14 +2217,14 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_use_skinnydip", coBools);
     def->label = L("Enable Skinnydip string reduction");
-    def->tooltip = L("Skinnydip performs a secondary dip into the meltzone to burn off fine strings of filament");
+    def->tooltip = L("Skinnydip performs a secondary dip into the meltzone to burn off fine strings of material");
     def->mode = comAdvancedE | comSuSi;
     def->is_vector_extruder = true;
     def->set_default_value(new ConfigOptionBools { false });
 
     def = this->add("filament_melt_zone_pause", coInts);
     def->label = L("Pause in melt zone");
-    def->tooltip = L("Stay in melt zone for this amount of time before extracting the filament.  Not usually necessary.");
+    def->tooltip = L("Stay in melt zone for this amount of time before extracting the material.  Not usually necessary.");
     def->sidetext = L("milliseconds");
     def->min = 0;
     def->mode = comExpert | comSuSi;
@@ -2260,7 +2260,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_toolchange_temp", coInts);
     def->label = L("Toolchange temperature");
-    def->tooltip = L("To further reduce stringing, it can be helpful to set a lower temperature just prior to extracting filament from the hotend.");
+    def->tooltip = L("To further reduce stringing, it can be helpful to set a lower temperature just prior to extracting material from the hotend.");
     def->sidetext = L("°C");
     def->min = 0;
     def->mode = comAdvancedE | comSuSi;
@@ -2288,7 +2288,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_unloading_speed", coFloats);
     def->label = L("Unloading speed");
-    def->tooltip = L("Speed used for unloading the filament on the wipe tower (does not affect "
+    def->tooltip = L("Speed used for unloading the material on the wipe tower (does not affect "
                       " initial part of unloading just after ramming). ");
     def->sidetext = L("mm/s");
     def->min = 0;
@@ -2298,7 +2298,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_unloading_speed_start", coFloats);
     def->label = L("Unloading speed at the start");
-    def->tooltip = L("Speed used for unloading the tip of the filament immediately after ramming. ");
+    def->tooltip = L("Speed used for unloading the tip of the material immediately after ramming. ");
     def->sidetext = L("mm/s");
     def->min = 0;
     def->mode = comExpert | comPrusa;
@@ -2307,7 +2307,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_toolchange_delay", coFloats);
     def->label = L("Delay after unloading");
-    def->tooltip = L("Time to wait after the filament is unloaded. "
+    def->tooltip = L("Time to wait after the material is unloaded. "
                    "May help to get reliable toolchanges with flexible materials "
                    "that may need more time to shrink to original dimensions. ");
     def->sidetext = L("s");
@@ -2318,7 +2318,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_cooling_moves", coInts);
     def->label = L("Number of cooling moves");
-    def->tooltip = L("Filament is cooled by being moved back and forth in the "
+    def->tooltip = L("Material is cooled by being moved back and forth in the "
                    "cooling tubes. Specify desired number of these moves.");
     def->max = 0;
     def->max = 20;
@@ -2337,8 +2337,8 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_minimal_purge_on_wipe_tower", coFloats);
     def->label = L("Minimal purge on wipe tower");
-    def->tooltip = L("After a tool change, the exact position of the newly loaded filament inside "
-                     "the nozzle may not be known, and the filament pressure is likely not yet stable. "
+    def->tooltip = L("After a tool change, the exact position of the newly loaded material inside "
+                     "the nozzle may not be known, and the material pressure is likely not yet stable. "
                      "Before purging the print head into an infill or a sacrificial object, Slic3r will always prime "
                      "this amount of material into the wipe tower to produce successive infill or sacrificial object extrusions reliably.");
     def->sidetext = L("mm³");
@@ -2357,8 +2357,8 @@ void PrintConfigDef::init_fff_params()
     def->set_default_value(new ConfigOptionFloats { 3.4 });
 
     def = this->add("filament_load_time", coFloats);
-    def->label = L("Filament load time");
-    def->tooltip = L("Time for the printer firmware (or the Multi Material Unit 2.0) to load a new filament during a tool change (when executing the T code). This time is added to the total print time by the G-code time estimator.");
+    def->label = L("Material load time");
+    def->tooltip = L("Time for the printer firmware (or the Multi Material Unit 2.0) to load a new material during a tool change (when executing the T code). This time is added to the total print time by the G-code time estimator.");
     def->sidetext = L("s");
     def->min = 0;
     def->mode = comExpert | comPrusa;
@@ -2368,7 +2368,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_pressure_advance", coFloats);
     def->label = L("Pressure advance");
     def->tooltip = L("Default pressure advance value (Linear advance factor for Marlin)."
-           " If enabled, the gcode will emit a pressure advance value for this filament."
+           " If enabled, the gcode will emit a pressure advance value for this material."
            "\nWith reprap and sprinter, 'M572 Dx Sx' is used."
            "\nWith klipper, 'SET_PRESSURE_ADVANCE ADVANCE=x EXTRUDER=x' is used."
            "\nWith other firmware 'M900 Kx' is used.");
@@ -2545,8 +2545,8 @@ void PrintConfigDef::init_fff_params()
        " 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6" });
 
     def = this->add("filament_unload_time", coFloats);
-    def->label = L("Filament unload time");
-    def->tooltip = L("Time for the printer firmware (or the Multi Material Unit 2.0) to unload a filament during a tool change (when executing the T code). This time is added to the total print time by the G-code time estimator.");
+    def->label = L("Material unload time");
+    def->tooltip = L("Time for the printer firmware (or the Multi Material Unit 2.0) to unload a material during a tool change (when executing the T code). This time is added to the total print time by the G-code time estimator.");
     def->sidetext = L("s");
     def->min = 0;
     def->mode = comExpert | comPrusa;
@@ -2556,7 +2556,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_multitool_ramming", coBools);
     def->label = L("Enable ramming for multitool setups");
     def->tooltip = L("Perform ramming when using multitool printer (i.e. when the 'Single Extruder Multimaterial' in Printer Settings is unchecked). "
-                     "When checked, a small amount of filament is rapidly extruded on the wipe tower just before the toolchange. "
+                     "When checked, a small amount of material is rapidly extruded on the wipe tower just before the toolchange. "
                      "This option is only used when the wipe tower is enabled.");
     def->mode = comExpert | comPrusa;
     def->set_default_value(new ConfigOptionBools { false });
@@ -2571,7 +2571,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_multitool_ramming_flow", coFloats);
     def->label = L("Multitool ramming flow");
-    def->tooltip = L("Flow used for ramming the filament before the toolchange.");
+    def->tooltip = L("Flow used for ramming the material before the toolchange.");
     def->sidetext = L("mm³/s");
     def->min = 0;
     def->mode = comExpert | comPrusa;
@@ -2579,8 +2579,9 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_diameter", coFloats);
     def->label = L("Diameter");
-    def->tooltip = L("Enter your filament diameter here. Good precision is required, so use a caliper "
-                   "and do multiple measurements along the filament, then compute the average.");
+    def->tooltip = L("If your material is a filament, enter your filament diameter here. Good precision is required, so use a caliper "
+                   "and do multiple measurements along the material, then compute the average."
+                   "\nIf your material isn't a filament, then refer to your construtor guidlines, or set use_volumetric_e.");
     def->sidetext = L("mm");
     def->min = 0;
     def->mode = comAdvancedE | comPrusa;
@@ -2589,9 +2590,9 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_shrink", coPercents);
     def->label = L("Shrinkage");
-    def->tooltip = L("Enter the shrinkage percentage that the filament will get after cooling (94% if you measure 94mm instead of 100mm)."
+    def->tooltip = L("Enter the shrinkage percentage that the material will get after cooling (94% if you measure 94mm instead of 100mm)."
         " The part will be scaled in xy to compensate."
-        " Only the filament used for the perimeter is taken into account."
+        " Only the material used for the perimeter is taken into account."
         "\nBe sure to allow enough space between objects, as this compensation is done after the checks.");
     def->sidetext = L("%");
     def->ratio_over = "";
@@ -2603,7 +2604,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_max_overlap", coPercents);
     def->label = L("Max line overlap");
     def->tooltip = L("This setting will ensure that all 'overlap' are not higher than this value."
-        " This is useful for filaments that are too viscous, as the line can't flow under the previous one."
+        " This is useful for materials that are too viscous, as the line can't flow under the previous one."
         "\nNote: top solid infill lines are excluded, to prevent visual defects.");
     def->sidetext = L("%");
     def->ratio_over = "";
@@ -2616,8 +2617,8 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_density", coFloats);
     def->label = L("Density");
     def->category = OptionCategory::filament;
-    def->tooltip = L("Enter your filament density here. This is only for statistical information. "
-                   "A decent way is to weigh a known length of filament and compute the ratio "
+    def->tooltip = L("Enter your material density here. This is only for statistical information. "
+                   "A decent way is to weigh a known length of material and compute the ratio "
                    "of the length to volume. Better is to calculate the volume directly through displacement.");
     def->sidetext = L("g/cm³");
     def->min = 0;
@@ -2626,9 +2627,9 @@ void PrintConfigDef::init_fff_params()
     def->set_default_value(new ConfigOptionFloats{ 0. });
 
     def = this->add("filament_type", coStrings);
-    def->label = L("Filament type");
+    def->label = L("Material type");
     def->category = OptionCategory::filament;
-    def->tooltip = L("The filament material type for use in custom G-codes.");
+    def->tooltip = L("The material material type for use in custom G-codes.");
     def->gui_flags = "show_value";
     def->set_enum_values(ConfigOptionDef::GUIType::select_open, {
         "PLA", 
@@ -2666,9 +2667,9 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_cost", coFloats);
     def->label = L("Cost");
-    def->full_label = L("Filament cost");
+    def->full_label = L("Material cost");
     def->category = OptionCategory::filament;
-    def->tooltip = L("Enter your filament cost per kg here. This is only for statistical information.");
+    def->tooltip = L("Enter your material cost per kg here. This is only for statistical information.");
     def->sidetext = L("money/kg");
     def->min = 0;
     def->is_vector_extruder = true;
@@ -2678,10 +2679,10 @@ void PrintConfigDef::init_fff_params()
     def = this->add("filament_spool_weight", coFloats);
     def->label = L("Spool weight");
     def->category = OptionCategory::filament;
-    def->tooltip = L("Enter weight of the empty filament spool. "
-                     "One may weigh a partially consumed filament spool before printing and one may compare the measured weight "
-                     "with the calculated weight of the filament with the spool to find out whether the amount "
-                     "of filament on the spool is sufficient to finish the print.");
+    def->tooltip = L("Enter weight of the empty material spool. "
+                     "One may weigh a partially consumed material spool before printing and one may compare the measured weight "
+                     "with the calculated weight of the material with the spool to find out whether the amount "
+                     "of material on the spool is sufficient to finish the print.");
     def->sidetext = L("g");
     def->min = 0;
     def->is_vector_extruder = true;
@@ -2902,7 +2903,7 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("This is the width of the ironing pass, in a % of the top infill extrusion width, should not be more than 50%"
         " (two times more lines, 50% overlap). It's not necessary to go below 25% (four times more lines, 75% overlap). \nIf you have problems with your ironing process,"
         " don't forget to look at the flow->above bridge flow, as this setting should be set to min 110% to let you have enough plastic in the top layer."
-        " A value too low will make your extruder eat the filament.");
+        " A value too low will make your extruder eat the material.");
     def->ratio_over = "top_infill_extrusion_width";
     def->min = 0;
     def->max_literal = { 1, true };
@@ -2916,7 +2917,7 @@ void PrintConfigDef::init_fff_params()
     def->category = OptionCategory::infill;
     def->tooltip = L("This is the percentage of the flow that is used for the second ironing pass. Typical 10-20%. "
         "Should not be higher than 20%, unless you have your top extrusion width greatly superior to your nozzle width. "
-        "A value too low and your extruder will eat the filament. A value too high and the first pass won't print well.");
+        "A value too low and your extruder will eat the material. A value too high and the first pass won't print well.");
     //def->min = 0;
     //def->max = 0.9;
     def->mode = comExpert | comSuSi;
@@ -3457,11 +3458,11 @@ void PrintConfigDef::init_fff_params()
     def->set_default_value(new ConfigOptionStrings());
 
     def = this->add("high_current_on_filament_swap", coBool);
-    def->label = L("High extruder current on filament swap");
+    def->label = L("High extruder current on material swap");
     def->category = OptionCategory::general;
-    def->tooltip = L("It may be beneficial to increase the extruder motor current during the filament exchange"
+    def->tooltip = L("It may be beneficial to increase the extruder motor current during the material exchange"
                    " sequence to allow for rapid ramming feed rates and to overcome resistance when loading"
-                   " a filament with an ugly shaped tip.");
+                   " a material with an ugly shaped tip.");
     def->mode = comExpert | comPrusa;
     def->set_default_value(new ConfigOptionBool(0));
 
@@ -4395,7 +4396,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Minimal filament extrusion length");
     def->category = OptionCategory::skirtBrim;
     def->tooltip = L("Generate no less than the number of skirt loops required to consume "
-                   "the specified amount of filament on the bottom layer. For multi-extruder machines, "
+                   "the specified amount of material on the bottom layer. For multi-extruder machines, "
                    "this minimum applies to each extruder.");
     def->sidetext = L("mm");
     def->min = 0;
@@ -4880,8 +4881,8 @@ void PrintConfigDef::init_fff_params()
     def->set_default_value(new ConfigOptionEnum<NoPerimeterUnsupportedAlgo>(npuaNone));
 
     def = this->add("parking_pos_retraction", coFloat);
-    def->label = L("Filament parking position");
-    def->tooltip = L("Distance of the extruder tip from the position where the filament is parked "
+    def->label = L("Material parking position");
+    def->tooltip = L("Distance of the extruder tip from the position where the material is parked "
                       "when unloaded. This should match the value in printer firmware. ");
     def->sidetext = L("mm");
     def->min = 0;
@@ -4890,7 +4891,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("extra_loading_move", coFloat);
     def->label = L("Extra loading distance");
-    def->tooltip = L("When set to zero, the distance the filament is moved from parking position during load "
+    def->tooltip = L("When set to zero, the distance the material is moved from parking position during load "
                       "is exactly the same as it was moved back during unload. When positive, it is loaded further, "
                       " if negative, the loading move is shorter than unloading. ");
     def->sidetext = L("mm");
@@ -4916,7 +4917,7 @@ void PrintConfigDef::init_fff_params()
     def->full_label = L("Perimeter bonding");
     def->category = OptionCategory::perimeter;
     def->tooltip = L("This setting may slightly degrade the quality of your external perimeter, in exchange for a better bonding between perimeters."
-        "Use it if you have great difficulties with perimeter bonding, for example with high temperature filaments."
+        "Use it if you have great difficulties with perimeter bonding, for example with high temperature materials."
         "\nThis percentage is the % of overlap between perimeters, a bit like perimeter_overlap and external_perimeter_overlap, but in reverse."
         " You have to set perimeter_overlap and external_perimeter_overlap to 100%, or this setting has no effect."
         " 0: no effect, 50%: half of the nozzle will be over an already extruded perimeter while extruding a new one"
@@ -5174,7 +5175,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Bed Temperature");
     def->category = OptionCategory::filament;
     def->tooltip = L("Override the temperature of the bed."
-                    "\nIf disabled, uses the highest bed temperature from all filaments used in the first layer.");
+                    "\nIf disabled, uses the highest bed temperature from all materials used in the first layer.");
     def->sidetext = L("°C");
     def->min = 0;
     def->mode = comExpert | comSuSi;
@@ -5185,7 +5186,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("First Layer Bed Temperature");
     def->category = OptionCategory::filament;
     def->tooltip = L("Override the temperature of the bed while printing the first layer."
-                    "\nIf disabled, uses the highest first layer bed temperature from all filaments used in the first layer."
+                    "\nIf disabled, uses the highest first layer bed temperature from all materials used in the first layer."
                     "\nSet to 0 to prevent the slicer to do any first layer bed command.");
     def->sidetext = L("°C");
     def->min = 0;
@@ -5304,11 +5305,11 @@ void PrintConfigDef::init_fff_params()
     def->full_label = L("Raft contact distance type");
     def->category = OptionCategory::support;
     def->tooltip = L("How to compute the vertical z-distance.\n"
-        "From filament: it uses the nearest bit of the filament. When a bridge is extruded, it goes below the current plane.\n"
-        "From plane: it uses the plane-z. Same as 'from filament' if no 'bridge' is extruded.\n"
+        "From material: it uses the nearest bit of the material. When a bridge is extruded, it goes below the current plane.\n"
+        "From plane: it uses the plane-z. Same as 'from material' if no 'bridge' is extruded.\n"
         "None: No z-offset. Useful for Soluble supports.\n");
     def->set_enum<SupportZDistanceType>({
-        { "filament", L("From filament") },
+        { "filament", L("From material") },
         { "plane",    L("From plane") },
         { "none",     L("None (soluble)") }
     });
@@ -5507,8 +5508,8 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Retraction length");
     def->full_label = L("Retraction Length");
     def->category = OptionCategory::extruders;
-    def->tooltip = L("When retraction is triggered, filament is pulled back by the specified amount "
-                   "(the length is measured on raw filament, before it enters the extruder).");
+    def->tooltip = L("When retraction is triggered, material is pulled back by the specified amount "
+                   "(the length is measured on raw material, before it enters the extruder).");
     def->sidetext = L("mm (zero to disable)");
     def->min = 0;
     def->mode = comSimpleAE | comPrusa;
@@ -5561,8 +5562,8 @@ void PrintConfigDef::init_fff_params()
     def = this->add("retract_length_toolchange", coFloats);
     def->label = L("Length");
     def->full_label = L("Retraction Length (Toolchange)");
-    def->tooltip = L("When retraction is triggered before changing tool, filament is pulled back "
-                   "by the specified amount (the length is measured on raw filament, before it enters "
+    def->tooltip = L("When retraction is triggered before changing tool, material is pulled back "
+                   "by the specified amount (the length is measured on raw material, before it enters "
                    "the extruder)."
                     "\nNote: This value will be unretracted when this extruder will load the next time.");
     def->sidetext = L("mm (zero to disable)");
@@ -5636,7 +5637,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("retract_restart_extra", coFloats);
     def->label = L("Deretraction extra length");
     def->tooltip = L("When the retraction is compensated after the travel move, the extruder will push "
-                   "this additional amount of filament. This setting is rarely needed.");
+                   "this additional amount of material. This setting is rarely needed.");
     def->sidetext = L("mm");
     def->mode = comExpert | comPrusa;
     def->is_vector_extruder = true;
@@ -5646,7 +5647,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Extra length on restart");
     def->full_label = L("Extrat length on toolchange restart");
     def->tooltip = L("When the retraction is compensated after changing tool, the extruder will push "
-                    "this additional amount of filament"
+                    "this additional amount of material"
                     " (but not on the first extruder after start, as it should already be loaded).");
     def->sidetext = L("mm");
     def->mode = comExpert | comPrusa;
@@ -5668,7 +5669,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Deretraction Speed");
     def->full_label = L("Deretraction Speed");
     def->category = OptionCategory::extruders;
-    def->tooltip = L("The speed for loading of a filament into extruder after retraction "
+    def->tooltip = L("The speed for loading of a material into extruder after retraction "
                    "(this only applies to the extruder motor). If left as zero, the retraction speed is used.");
     def->sidetext = L("mm/s");
     def->mode = comAdvancedE | comPrusa;
@@ -6044,7 +6045,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Solid infill overlap");
     def->category = OptionCategory::width;
     def->tooltip = L("This setting allows you to reduce the overlap between the lines of the solid fill, to reduce the % filled if you see overextrusion signs on solid areas."
-        " Note that you should be sure that your flow (filament extrusion multiplier) is well calibrated and your filament max overlap is set before thinking to modify this."
+        " Note that you should be sure that your flow (material extrusion multiplier) is well calibrated and your material max overlap is set before thinking to modify this."
         "\nNote: top surfaces are still extruded with 100% overlap to prevent gaps.");
     def->sidetext = L("%");
     def->min = 0;
@@ -6183,7 +6184,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Temperature variation");
     // TRN PrintSettings : "Ooze prevention" > "Temperature variation"
     def->tooltip = L("Temperature difference to be applied when an extruder is not active. "
-                     "The value is not used when 'idle_temperature' in filament settings "
+                     "The value is not used when 'idle_temperature' in material settings "
                      "is defined.");
     def->sidetext = "∆°C";
     def->min = -max_temp;
@@ -6228,11 +6229,11 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("start_filament_gcode", coStrings);
     def->label = L("Start G-code");
-    def->full_label = L("Filament start G-code");
+    def->full_label = L("Material start G-code");
     def->category = OptionCategory::customgcode;
     def->tooltip = L("This start procedure is inserted at the beginning, after any printer start gcode (and "
-                   "after any toolchange to this filament in case of multi-material printers). "
-                   "This is used to override settings for a specific filament. If Slic3r detects "
+                   "after any toolchange to this material in case of multi-material printers). "
+                   "This is used to override settings for a specific material. If Slic3r detects "
                    "M104, M109, M140 or M190 in your custom codes, such commands will "
                    "not be prepended automatically so you're free to customize the order "
                    "of heating commands and other custom actions. Note that you can use placeholder variables "
@@ -6244,7 +6245,7 @@ void PrintConfigDef::init_fff_params()
     def->height = 12;
     def->mode = comExpert | comPrusa;
     def->is_vector_extruder = true;
-    def->set_default_value(new ConfigOptionStrings { "; Filament gcode\n" });
+    def->set_default_value(new ConfigOptionStrings { "; Material gcode\n" });
 
     def = this->add("color_change_gcode", coString);
     def->label = L("Color change G-code");
@@ -6278,7 +6279,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("single_extruder_multi_material", coBool);
     def->label = L("Single Extruder Multi Material");
     def->category = OptionCategory::mmsetup;
-    def->tooltip = L("The printer multiplexes filaments into a single hot end.");
+    def->tooltip = L("The printer multiplexes materials into a single hot end.");
     def->mode = comAdvancedE | comPrusa;
     def->set_default_value(new ConfigOptionBool(false));
 
@@ -6410,11 +6411,11 @@ void PrintConfigDef::init_fff_params()
     def->full_label = L("Support contact distance type");
     def->category = OptionCategory::support;
     def->tooltip = L("How to compute the vertical z-distance.\n"
-        "From filament: it uses the nearest bit of the filament. When a bridge is extruded, it goes below the current plane.\n"
-        "From plane: it uses the plane-z. Same as 'from filament' if no 'bridge' is extruded.\n"
+        "From material: it uses the nearest bit of the material. When a bridge is extruded, it goes below the current plane.\n"
+        "From plane: it uses the plane-z. Same as 'from material' if no 'bridge' is extruded.\n"
         "None: No z-offset. Useful for Soluble supports.\n");
     def->set_enum<SupportZDistanceType>({
-        { "filament", L("From filament") },
+        { "filament", L("From material") },
         { "plane",    L("From plane") },
         { "none",     L("None (soluble)") }
     });
@@ -7051,7 +7052,7 @@ void PrintConfigDef::init_fff_params()
     def->category = OptionCategory::customgcode;
     def->tooltip = L("This custom code is inserted at every extruder change. If you don't leave this empty, you are "
         "expected to take care of the toolchange yourself - Slic3r will not output any other G-code to "
-        "change the filament. You can use placeholder variables for all Slic3r settings as well as {toolchange_z}, {layer_z}, {layer_num}, {max_layer_z}, {previous_extruder} "
+        "change the material. You can use placeholder variables for all Slic3r settings as well as {toolchange_z}, {layer_z}, {layer_num}, {max_layer_z}, {previous_extruder} "
         "and {next_extruder}, so e.g. the standard toolchange command can be scripted as T{next_extruder}."
         "!! Warning !!: if any character is written here, Slic3r won't output any toolchange command by itself.");
     def->multiline = true;
@@ -7134,9 +7135,9 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Top solid infill overlap");
     def->category = OptionCategory::width;
     def->tooltip = L("This setting allows you to reduce the overlap between the lines of the top solid fill, to reduce the % filled if you see overextrusion signs on solid areas."
-        "\nNote that you should be sure that your flow (filament extrusion multiplier) is well calibrated and your filament max overlap is set before thinking to modify this."
+        "\nNote that you should be sure that your flow (material extrusion multiplier) is well calibrated and your material max overlap is set before thinking to modify this."
         "\nAlso, lowering it below 100% may create visible gaps in the top surfaces"
-        "\nSet overlap setting is the only one that can't be reduced by the filament's max overlap.");
+        "\nSet overlap setting is the only one that can't be reduced by the material's max overlap.");
     def->sidetext = L("%");
     def->min = 0;
     def->max = 100;
@@ -7246,10 +7247,11 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Use volumetric E");
     def->category = OptionCategory::general;
     def->tooltip = L("This experimental setting uses outputs the E values in cubic millimeters "
-                   "instead of linear millimeters. If your firmware doesn't already know "
-                   "filament diameter(s), you can put commands like 'M200 D{filament_diameter_0} T0' "
+                   "instead of linear millimeters. Can also be useful when you're not extruding a filament but a liquid or a paste."
+                   "\n For fialment material, if your firmware doesn't already know "
+                   "material diameter(s), you can put commands like 'M200 D{material_diameter_0} T0' "
                    "in your start G-code in order to turn volumetric mode on and use the filament "
-                   "diameter associated to the filament selected in Slic3r. This is only supported "
+                   "diameter associated to the material selected in Slic3r. This is only supported "
                    "in recent Marlin.");
     def->mode = comExpert | comPrusa;
     def->set_default_value(new ConfigOptionBool(false));
@@ -7316,7 +7318,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("wipe_lift", coFloatsOrPercents);
     def->label = L("Wipe lift");
     def->category = OptionCategory::extruders;
-    def->tooltip = L("When wiping, it will lift gradually to this height, so the filament can be 'cut' more easily."
+    def->tooltip = L("When wiping, it will lift gradually to this height, so the material can be 'cut' more easily."
         "\nCan be a percentage of the current layer height.");
     def->mode = comAdvancedE | comSuSi;
     def->is_vector_extruder = true;
@@ -7382,7 +7384,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("wipe_tower_speed", coFloat);
     def->label = L("Wipe Tower Speed");
     def->category = OptionCategory::speed;
-    def->tooltip = L("Printing speed of the wipe tower. Capped by filament_max_volumetric_speed (if set)."
+    def->tooltip = L("Printing speed of the wipe tower. Capped by material_max_volumetric_speed (if set)."
         "\nIf set to zero, a value of 80mm/s is used.");
     def->sidetext = L("mm/s");
     def->mode = comAdvancedE | comSuSi;
@@ -7418,7 +7420,7 @@ void PrintConfigDef::init_fff_params()
     def = this->add("wiping_volumes_matrix", coFloats);
     def->label = L("Purging volumes - matrix");
     def->tooltip = L("This matrix describes volumes (in cubic milimetres) required to purge the"
-                     " new filament on the wipe tower for any given pair of tools. ");
+                     " new material on the wipe tower for any given pair of tools. ");
     def->mode = comSimpleAE | comPrusa;
     def->set_default_value(new ConfigOptionFloats {   0., 140., 140., 140., 140.,
                                                     140.,   0., 140., 140., 140.,
@@ -7429,7 +7431,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("wipe_advanced", coBool);
     def->label = L("Enable advanced wiping volume");
-    def->tooltip = L("Allow Slic3r to compute the purge volume via smart computations. Use the pigment% of each filament and following parameters");
+    def->tooltip = L("Allow Slic3r to compute the purge volume via smart computations. Use the pigment% of each material and following parameters");
     def->mode = comExpert | comSuSi;
     def->set_default_value(new ConfigOptionBool(false));
 
@@ -7442,7 +7444,7 @@ void PrintConfigDef::init_fff_params()
 
     def = this->add("filament_wipe_advanced_pigment", coFloats);
     def->label = L("Pigment percentage");
-    def->tooltip = L("The pigment % for this filament (bewteen 0 and 1, 1=100%). 0 for translucent/natural, 0.2-0.5 for white and 1 for black.");
+    def->tooltip = L("The pigment % for this material (bewteen 0 and 1, 1=100%). 0 for translucent/natural, 0.2-0.5 for white and 1 for black.");
     def->min = 0;
     def->max = 1;
     def->mode = comExpert | comSuSi;
@@ -12355,7 +12357,7 @@ OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef()
     def = this->add("initial_filament_type", coString);
     // TRN: Meaning 'filament type of the initial filament'
     def->label = L("Initial filament type");
-    def->tooltip = L("String containing filament type of the first used extruder.");
+    def->tooltip = L("String containing material type of the first used extruder.");
 
     def = this->add("initial_tool", coInt);
     def->label = L("Initial tool");
@@ -12372,7 +12374,7 @@ PrintStatisticsConfigDef::PrintStatisticsConfigDef()
 
     def = this->add("extruded_volume", coFloats);
     def->label = L("Volume per extruder");
-    def->tooltip = L("Total filament volume extruded per extruder during the entire print.");
+    def->tooltip = L("Total material volume extruded per extruder during the entire print.");
 
     def = this->add("normal_print_time", coString);
     def->label = L("Print time (normal mode)");
@@ -12387,8 +12389,8 @@ PrintStatisticsConfigDef::PrintStatisticsConfigDef()
     def->tooltip = L("Estimated print time when printed in normal mode (i.e. not in silent mode). Same as normal_print_time.");
 
     def = this->add("printing_filament_types", coString);
-    def->label = L("Used filament types");
-    def->tooltip = L("Comma-separated list of all filament types used during the print.");
+    def->label = L("Used material types");
+    def->tooltip = L("Comma-separated list of all material types used during the print.");
 
     def = this->add("silent_print_time", coString);
     def->label = L("Print time (silent mode)");
@@ -12396,23 +12398,23 @@ PrintStatisticsConfigDef::PrintStatisticsConfigDef()
 
     def = this->add("total_cost", coFloat);
     def->label = L("Total cost");
-    def->tooltip = L("Total cost of all material used in the print. Calculated from cost in Filament Settings.");
+    def->tooltip = L("Total cost of all material used in the print. Calculated from cost in Material Settings.");
 
     def = this->add("total_weight", coFloat);
     def->label = L("Total weight");
-    def->tooltip = L("Total weight of the print. Calculated from density in Filament Settings.");
+    def->tooltip = L("Total weight of the print. Calculated from density in Material Settings.");
 
     def = this->add("total_wipe_tower_cost", coFloat);
     def->label = L("Total wipe tower cost");
-    def->tooltip = L("Total cost of the material wasted on the wipe tower. Calculated from cost in Filament Settings.");
+    def->tooltip = L("Total cost of the material wasted on the wipe tower. Calculated from cost in Material Settings.");
 
     def = this->add("total_wipe_tower_filament", coFloat);
     def->label = L("Wipe tower volume");
-    def->tooltip = L("Total filament volume extruded on the wipe tower.");
+    def->tooltip = L("Total material volume extruded on the wipe tower.");
 
     def = this->add("used_filament", coFloat);
-    def->label = L("Used filament");
-    def->tooltip = L("Total length of filament used in the print.");
+    def->label = L("Used material");
+    def->tooltip = L("Total length of material used in the print.");
 
     def = this->add("total_toolchanges", coInt);
     def->label = L("Total number of toolchanges");
@@ -12420,15 +12422,15 @@ PrintStatisticsConfigDef::PrintStatisticsConfigDef()
 
     def = this->add("extruded_volume_total", coFloat);
     def->label = L("Total volume");
-    def->tooltip = L("Total volume of filament used during the entire print.");
+    def->tooltip = L("Total volume of material used during the entire print.");
 
     def = this->add("extruded_weight", coFloats);
     def->label = L("Weight per extruder");
-    def->tooltip = L("Weight per extruder extruded during the entire print. Calculated from density in Filament Settings.");
+    def->tooltip = L("Weight per extruder extruded during the entire print. Calculated from density in Material Settings.");
 
     def = this->add("extruded_weight_total", coFloat);
     def->label = L("Total weight");
-    def->tooltip = L("Total weight of the print. Calculated from density in Filament Settings.");
+    def->tooltip = L("Total weight of the print. Calculated from density in Material Settings.");
 
     def = this->add("total_layer_count", coInt);
     def->label = L("Total layer count");
@@ -12539,8 +12541,8 @@ OtherPresetsConfigDef::OtherPresetsConfigDef()
     def->tooltip = L("Name of the print preset used for slicing.");
 
     def = this->add("filament_preset", coStrings);
-    def->label = L("Filament preset name");
-    def->tooltip = L("Names of the filament presets used for slicing. The variable is a vector "
+    def->label = L("Material preset name");
+    def->tooltip = L("Names of the material presets used for slicing. The variable is a vector "
                      "containing one name for each extruder.");
     def->is_vector_extruder = true;
 
@@ -12655,7 +12657,7 @@ CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef()
 
     def = this->add("layer_used_filament", coInt);
     def->label = L("Computed used filaent for each extruder");
-    def->tooltip = L("It's an array of mm of extruded filament at this layer, the layer that ends now. The first extruder is at index 0, and this array has the same "
+    def->tooltip = L("It's an array of mm of extruded material at this layer, the layer that ends now. The first extruder is at index 0, and this array has the same "
                      "number of entries as the number of extruders as the printer.");
 
     def = this->add("previous_object_id", coInt);

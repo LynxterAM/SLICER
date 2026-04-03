@@ -123,7 +123,7 @@ void KBShortcutsDialog::fill_shortcuts()
             { ctrl + "2", L("Select Layer Preview Tab") },
             { ctrl + "3", L("Select Gcode preview Tab") },
             { ctrl + "4", L("Select Print Settings Tab") },
-            { ctrl + "5", L("Select Filament Settings Tab") },
+            { ctrl + "5", L("Select Material Settings Tab") },
             { ctrl + "6", L("Select Printer Settings Tab") },
             { ctrl + "J", L("Print host upload queue") },
             { ctrl + "Shift+" + "I", L("Open new instance") },

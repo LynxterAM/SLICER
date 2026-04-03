@@ -291,7 +291,7 @@ void show_substitutions_info(const PresetsConfigSubstitutions &presets_config_su
 		switch (type) {
 			case Preset::TYPE_FFF_PRINT:		return _L("Print settings");
 			case Preset::TYPE_SLA_PRINT:		return _L("SLA print settings");
-			case Preset::TYPE_FFF_FILAMENT:		return _L("Filament");
+			case Preset::TYPE_FFF_FILAMENT:		return _L("Material");
 			case Preset::TYPE_SLA_MATERIAL:		return _L("SLA material");
 			case Preset::TYPE_PRINTER: 			return _L("Printer");
 			case Preset::TYPE_PHYSICAL_PRINTER:	return _L("Physical Printer");

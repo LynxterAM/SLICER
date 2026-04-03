@@ -4888,7 +4888,7 @@ void GLCanvas3D::update_tooltip_for_settings_item_in_main_toolbar()
 {
     std::string new_tooltip = _u8L("Switch to Settings") + 
                              "\n" + "[" + GUI::shortkey_ctrl_prefix() + "4] - " + _u8L("Print Settings Tab")    + 
-                             "\n" + "[" + GUI::shortkey_ctrl_prefix() + "5] - " + (current_printer_technology() == ptFFF ? _u8L("Filament Settings Tab") : _u8L("Material Settings Tab")) +
+                             "\n" + "[" + GUI::shortkey_ctrl_prefix() + "5] - " + (current_printer_technology() == ptFFF ? _u8L("Material Settings Tab") : _u8L("Material Settings Tab")) +
                              "\n" + "[" + GUI::shortkey_ctrl_prefix() + "6] - " + _u8L("Printer Settings Tab") ;
 
     m_main_toolbar.set_tooltip(get_main_toolbar_item_id("settings"), new_tooltip);
@@ -5894,7 +5894,7 @@ bool GLCanvas3D::_init_main_toolbar()
     item.name = "settings";
     item.icon_filename = "settings.svg";
     item.tooltip = _u8L("Switch to Settings") + "\n" + "[" + GUI::shortkey_ctrl_prefix() + "4] - " + _u8L("Print Settings Tab")    + 
-                                                "\n" + "[" + GUI::shortkey_ctrl_prefix() + "5] - " + (current_printer_technology() == ptFFF ? _u8L("Filament Settings Tab") : _u8L("Material Settings Tab") +
+                                                "\n" + "[" + GUI::shortkey_ctrl_prefix() + "5] - " + (current_printer_technology() == ptFFF ? _u8L("Material Settings Tab") : _u8L("Material Settings Tab") +
                                                 "\n" + "[" + GUI::shortkey_ctrl_prefix() + "6] - " + _u8L("Printer Settings Tab")) ;
     item.sprite_id = sprite_id++;
     item.enabling_callback    = GLToolbarItem::Default_Enabling_Callback;

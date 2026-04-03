@@ -1,5 +1,5 @@
 #note: all settings are id$0 as the slicer consider there is only one value in the arrays in the gui.
-page:Filament:spool
+page:Material:spool
 group:filament_spool_weight_event:Filament
 	setting:id$0:filament_colour
 	setting:id$0:filament_diameter
@@ -22,7 +22,7 @@ group:Temperature °C
 	setting:id$0:filament_chamber
 	setting:id$0:chamber_temperature
 	setting:id$0:label$Idle:idle_temperature
-group:Filament properties
+group:Material properties
 	setting:id$0:width$7:filament_type
 	setting:id$0:filament_soluble
 	setting:id$0:filament_shrink

@@ -2395,28 +2395,28 @@ std::string Print::output_filename(const std::string &filename_base) const
     return this->PrintBase::output_filename(output_filename_format, ".gcode", filename_base, &config);
 }
 
-const std::string PrintStatistics::FilamentUsedG     = "filament used [g]";
-const std::string PrintStatistics::FilamentUsedGMask = "; filament used [g] =";
+const std::string PrintStatistics::FilamentUsedG     = "material used [g]";
+const std::string PrintStatistics::FilamentUsedGMask = "; material used [g] =";
 
-const std::string PrintStatistics::TotalFilamentUsedG          = "total filament used [g]";
-const std::string PrintStatistics::TotalFilamentUsedGMask      = "; total filament used [g] =";
-const std::string PrintStatistics::TotalFilamentUsedGValueMask = "; total filament used [g] = %.2lf\n";
+const std::string PrintStatistics::TotalFilamentUsedG          = "total material used [g]";
+const std::string PrintStatistics::TotalFilamentUsedGMask      = "; total material used [g] =";
+const std::string PrintStatistics::TotalFilamentUsedGValueMask = "; total material used [g] = %.2lf\n";
 
-const std::string PrintStatistics::FilamentUsedCm3     = "filament used [cm3]";
-const std::string PrintStatistics::FilamentUsedCm3Mask = "; filament used [cm3] =";
+const std::string PrintStatistics::FilamentUsedCm3     = "material used [cm3]";
+const std::string PrintStatistics::FilamentUsedCm3Mask = "; material used [cm3] =";
 
-const std::string PrintStatistics::FilamentUsedMm     = "filament used [mm]";
-const std::string PrintStatistics::FilamentUsedMmMask = "; filament used [mm] =";
+const std::string PrintStatistics::FilamentUsedMm     = "material used [mm]";
+const std::string PrintStatistics::FilamentUsedMmMask = "; material used [mm] =";
 
-const std::string PrintStatistics::FilamentCost     = "filament cost";
-const std::string PrintStatistics::FilamentCostMask = "; filament cost =";
+const std::string PrintStatistics::FilamentCost     = "material cost";
+const std::string PrintStatistics::FilamentCostMask = "; material cost =";
 
-const std::string PrintStatistics::TotalFilamentCost          = "total filament cost";
-const std::string PrintStatistics::TotalFilamentCostMask      = "; total filament cost =";
-const std::string PrintStatistics::TotalFilamentCostValueMask = "; total filament cost = %.2lf\n";
+const std::string PrintStatistics::TotalFilamentCost          = "total material cost";
+const std::string PrintStatistics::TotalFilamentCostMask      = "; total material cost =";
+const std::string PrintStatistics::TotalFilamentCostValueMask = "; total material cost = %.2lf\n";
 
-const std::string PrintStatistics::TotalFilamentUsedWipeTower     = "total filament used for wipe tower [g]";
-const std::string PrintStatistics::TotalFilamentUsedWipeTowerValueMask = "; total filament used for wipe tower [g] = %.2lf\n";
+const std::string PrintStatistics::TotalFilamentUsedWipeTower     = "total material used for wipe tower [g]";
+const std::string PrintStatistics::TotalFilamentUsedWipeTowerValueMask = "; total material used for wipe tower [g] = %.2lf\n";
 
 
 

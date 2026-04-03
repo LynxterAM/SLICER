@@ -4473,7 +4473,7 @@ void GCodeViewer::render_legend(float& legend_height)
                          _u8L("Layer duration"),
                          _u8L("Chronology"),
                          _u8L("Tool"),
-                         _u8L("Filament"),
+                         _u8L("Material"),
                          _u8L("Color Print"),
                          _u8L("Object") };
         view_options_id = { 0, 1, 2, 3, 4, 5, 8, 9, 6, 7, 10, 11, 12, 13 };
@@ -4490,7 +4490,7 @@ void GCodeViewer::render_legend(float& legend_height)
                          _u8L("Volumetric flow rate (mm³/s)"),
                          _u8L("Extrusion section (mm³/mm)"),
                          _u8L("Tool"),
-                         _u8L("Filament"),
+                         _u8L("Material"),
                          _u8L("Color Print"),
                          _u8L("Object") };
         view_options_id = { 0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13 };
@@ -4604,7 +4604,7 @@ void GCodeViewer::render_legend(float& legend_height)
             size_t i = 0;
             for (unsigned char extruder_id : m_extruder_ids) {
                 if (m_filament_colors.size() > extruder_id) {
-                    append_item(EItemType::Rect, m_filament_colors[extruder_id], _u8L("Filament") + " " + std::to_string(extruder_id + 1),
+                    append_item(EItemType::Rect, m_filament_colors[extruder_id], _u8L("Material") + " " + std::to_string(extruder_id + 1),
                                 true, "", 0.0f, 0.0f, offsets, used_filaments_m[i], used_filaments_g[i]);
                     i++;
                 }
@@ -4922,7 +4922,7 @@ void GCodeViewer::render_legend(float& legend_height)
             if (!m_settings_ids.filament.empty()) {
                 for (unsigned char i : m_extruder_ids) {
                     if (i < static_cast<unsigned char>(m_settings_ids.filament.size()) && !m_settings_ids.filament[i].empty()) {
-                        std::string txt = _u8L("Filament");
+                        std::string txt = _u8L("Material");
                         txt += (m_extruder_ids.size() == 1) ? ":" : " " + std::to_string(i + 1);
                         add_strings_row_to_table(txt, ImGuiWrapper::get_COL_LIGHT(),
                             trim_text_if_needed(m_settings_ids.filament[i]), ImGuiWrapper::to_ImVec4(ColorRGBA::WHITE()));

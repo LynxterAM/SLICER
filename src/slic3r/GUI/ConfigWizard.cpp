@@ -904,14 +904,14 @@ void PageMaterials::set_compatible_printers_html_window(const std::vector<std::s
     wxString text;
     if (materials->technology == T_FFF && template_shown) {
         // TRN ConfigWizard: Materials : "%1%" = "Filaments"/"SLA materials"
-        text = format_wxstr(_L("%1% visible for <b>(\"Template\")</b> printer are universal profiles available for all printers. These might not be compatible with your printer."), materials->technology == T_FFF ? _L("Filaments") : _L("SLA materials"));
+        text = format_wxstr(_L("%1% visible for <b>(\"Template\")</b> printer are universal profiles available for all printers. These might not be compatible with your printer."), materials->technology == T_FFF ? _L("Materials") : _L("SLA materials"));
     } else {
         // TRN ConfigWizard: Materials : "%1%" = "Filaments"/"SLA materials"
-        wxString first_line = format_wxstr(_L("%1% marked with <b>*</b> are <b>not</b> compatible with some installed printers."), materials->technology == T_FFF ? _L("Filaments") : _L("SLA materials"));
+        wxString first_line = format_wxstr(_L("%1% marked with <b>*</b> are <b>not</b> compatible with some installed printers."), materials->technology == T_FFF ? _L("Materials") : _L("SLA materials"));
 
         if (all_printers) {
             // TRN ConfigWizard: Materials : "%1%" = "filament"/"SLA material"
-            wxString second_line = format_wxstr(_L("All installed printers are compatible with the selected %1%."), materials->technology == T_FFF ? _L("filament") : _L("SLA material"));
+            wxString second_line = format_wxstr(_L("All installed printers are compatible with the selected %1%."), materials->technology == T_FFF ? _L("material") : _L("SLA material"));
             text = wxString::Format(
                 "<html>"
                 "<style>"
@@ -933,7 +933,7 @@ void PageMaterials::set_compatible_printers_html_window(const std::vector<std::s
             wxString second_line;
             if (!printer_names.empty())
                 second_line = (materials->technology == T_FFF ?
-                    _L("Only the following installed printers are compatible with the selected filaments") :
+                    _L("Only the following installed printers are compatible with the selected materials") :
                     _L("Only the following installed printers are compatible with the selected SLA materials")) + ":";
             text = wxString::Format(
                 "<html>"
@@ -1324,7 +1324,7 @@ void PageMaterials::select_material(int i)
     const std::string& alias_key = list_profile->get_data(i);
     if (checked && template_shown && !notification_shown) {
         notification_shown = true;
-        wxString message = _L("You have selected template filament. Please note that these filaments are available for all printers but are NOT certain to be compatible with your printer. Do you still wish to have this filament selected?\n(This message won't be displayed again.)");
+        wxString message = _L("You have selected template material. Please note that these materials are available for all printers but are NOT certain to be compatible with your printer. Do you still wish to have this material selected?\n(This message won't be displayed again.)");
         MessageDialog msg(this, message, _L("Notice"), wxYES_NO);
         if (msg.ShowModal() == wxID_NO) {
             list_profile->Check(i, false);
@@ -1970,7 +1970,7 @@ void PageBuildVolume::apply_custom_config(DynamicPrintConfig& config)
 }
 
 PageDiameters::PageDiameters(ConfigWizard *parent)
-    : ConfigWizardPage(parent, _L("Filament and Nozzle Diameters"), _L("Print Diameters"), 1)
+    : ConfigWizardPage(parent, _L("Material and Nozzle Diameters"), _L("Print Diameters"), 1)
     , diam_nozzle(new DiamTextCtrl(this))
     , diam_filam (new DiamTextCtrl(this))
 {
@@ -1998,8 +1998,8 @@ PageDiameters::PageDiameters(ConfigWizard *parent)
 
     append_spacer(VERTICAL_SPACING);
 
-    append_text(_L("Enter the diameter of your filament."));
-    append_text(_L("Good precision is required, so use a caliper and do multiple measurements along the filament, then compute the average."));
+    append_text(_L("Enter the diameter of your material extrusion."));
+    append_text(_L("Good precision is required, so use a caliper and do multiple measurements along the material, then compute the average."));
 
     auto *sizer_filam = new wxFlexGridSizer(3, 5, 5);
     auto *text_filam = new wxStaticText(this, wxID_ANY, _L("Filament Diameter") + ":");
@@ -2090,7 +2090,7 @@ PageTemperatures::PageTemperatures(ConfigWizard *parent)
     auto *default_bed = def_bed.get_default_value<ConfigOptionInts>();
     spin_bed->SetValue(default_bed != nullptr && default_bed->size() > 0 ? default_bed->get_at(0) : 0);
 
-    append_text(_L("Enter the temperature needed for extruding your filament."));
+    append_text(_L("Enter the temperature needed for extruding your material."));
     append_text(_L("A rule of thumb is 160 to 230 °C for PLA, and 215 to 250 °C for ABS."));
 
     auto *sizer_extr = new wxFlexGridSizer(3, 5, 5);
@@ -2104,7 +2104,7 @@ PageTemperatures::PageTemperatures(ConfigWizard *parent)
 
     append_spacer(VERTICAL_SPACING);
 
-    append_text(_L("Enter the bed temperature needed for getting your filament to stick to your heated bed."));
+    append_text(_L("Enter the bed temperature needed for getting your material to stick to your heated bed."));
     append_text(_L("A rule of thumb is 60 °C for PLA and 110 °C for ABS. Leave zero if you have no heated bed."));
 
     auto *sizer_bed = new wxFlexGridSizer(3, 5, 5);
@@ -2883,7 +2883,7 @@ void ConfigWizard::priv::select_default_materials_for_printer_models(Technology 
         }
         printer_names += "\n\n";
         std::string message = (technology & T_FFF ?
-            GUI::format(_L("Following printer profiles has no default filament: %1%Please select one manually."), printer_names) :
+            GUI::format(_L("Following printer profiles has no default material: %1%Please select one manually."), printer_names) :
             GUI::format(_L("Following printer profiles has no default material: %1%Please select one manually."), printer_names));
         MessageDialog msg(q, message, _L("Notice"), wxOK);
         msg.ShowModal();
@@ -3050,11 +3050,11 @@ bool ConfigWizard::priv::check_and_install_missing_materials(Technology technolo
     	if (! printer_models_without_material.empty()) {
 			if (only_for_model_id.empty())
 				ask_and_select_default_materials(
-					_L("The following FFF printer models have no filament selected:") +
+					_L("The following FFF printer models have no material selected:") +
 					"\n\n" +
 					printer_model_list(printer_models_without_material) +
 					"\n\n" +
-					_L("Do you want to select default filaments for these FFF printer models?"),
+					_L("Do you want to select default materials for these FFF printer models?"),
 					printer_models_without_material,
 					T_FFF);
 			else
@@ -3356,7 +3356,7 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
     if (!check_unsaved_preset_changes) {
         if ((check_unsaved_preset_changes = !first_added_filament.empty() || !first_added_sla_material.empty())) {
             header = !first_added_filament.empty() ? 
-                     _L("A new filament was installed and it will be activated.") :
+                     _L("A new material was installed and it will be activated.") :
                      _L("A new SLA material was installed and it will be activated.");
             if (!wxGetApp().check_and_keep_current_preset_changes(caption, header, act_btns, &apply_keeped_changes))
                 return false;
@@ -3370,7 +3370,7 @@ bool ConfigWizard::priv::apply_config(AppConfig *app_config, PresetBundle *prese
             bool is_filaments_changed     = changed(AppConfig::SECTION_FILAMENTS);
             bool is_sla_materials_changed = changed(AppConfig::SECTION_MATERIALS);
             if ((check_unsaved_preset_changes = is_filaments_changed || is_sla_materials_changed)) {
-                header = is_filaments_changed ? _L("Some filaments were uninstalled.") : _L("Some SLA materials were uninstalled.");
+                header = is_filaments_changed ? _L("Some materials were uninstalled.") : _L("Some SLA materials were uninstalled.");
                 if (!wxGetApp().check_and_keep_current_preset_changes(caption, header, act_btns, &apply_keeped_changes))
                     return false;
             }
@@ -3629,7 +3629,7 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
     p->update_materials(T_ANY);
     if (!p->only_sla_mode)
         p->add_page(p->page_filaments = new PageMaterials(this, &p->filaments,
-            _L("Filament Profiles Selection"), _L("Filaments"), _L("Type:") ));
+            _L("Material Profiles Selection"), _L("Materials"), _L("Type:") ));
 
     //p->add_page(p->page_sla_materials = new PageMaterials(this, &p->sla_materials,
     //    _L("SLA Material Profiles Selection") + " ", _L("SLA Materials"), _L("Type:") ));

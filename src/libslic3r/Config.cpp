@@ -99,10 +99,10 @@ std::string toString(OptionCategory opt) {
     case OptionCategory::output: return L("Output options");
     case OptionCategory::notes: return L("Notes");
     case OptionCategory::dependencies: return L("Dependencies");
-    case OptionCategory::filament: return L("Filament");
+    case OptionCategory::filament: return L("Material");
     case OptionCategory::cooling: return L("Cooling");
     case OptionCategory::advanced: return L("Advanced");
-    case OptionCategory::filoverride: return L("Filament overrides");
+    case OptionCategory::filoverride: return L("Material overrides");
     case OptionCategory::customgcode: return L("Custom G-code");
     case OptionCategory::general: return L("General");
     case OptionCategory::limits: return L("Machine limits"); // if not used, no need ot ask for translation

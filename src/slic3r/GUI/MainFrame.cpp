@@ -439,7 +439,7 @@ static void append_tab_menu_items_to_menubar(wxMenuBar* bar, PrinterTechnology p
     }
 
     for (const wxString& title : { has_marker           ? _L("Print Settings")       : pref() + _L("Print Settings") + suff(),
-                                   pt == ptSLA          ? _L("Material Settings")    : _L("Filament Settings"),
+                                   pt == ptSLA          ? _L("Material Settings")    : _L("Material Settings"),
                                    _L("Printer Settings") })
         bar->Append(new wxMenu(), title);
 }
@@ -533,7 +533,7 @@ static void add_tabs_as_menu(wxMenuBar* bar, MainFrame* main_frame, wxWindow* ba
             main_frame->select_tab(MainFrame::ETabType::PlaterGcode);
         else if (title == _L("Print Settings"))
             main_frame->select_tab(MainFrame::ETabType::PrintSettings);
-        else if (title == _L("Filament Settings"))
+        else if (title == _L("Material Settings"))
             main_frame->select_tab(MainFrame::ETabType::FilamentSettings);
         else if (title == _L("Material Settings"))
             main_frame->select_tab(MainFrame::ETabType::FilamentSettings);
@@ -2004,7 +2004,7 @@ void MainFrame::init_menubar_as_editor()
         append_menu_item(windowMenu, wxID_HIGHEST + 4, _L("P&rint Settings Tab") + "\tCtrl+4", _L("Show the print settings"),
             [this/*, tab_offset*/](wxCommandEvent&) { select_tab(ETabType::PrintSettings); }, "cog", nullptr,
             []() {return true; }, this);
-        wxMenuItem* item_material_tab = append_menu_item(windowMenu, wxID_HIGHEST + 5, _L("&Filament Settings Tab") + "\tCtrl+5", _L("Show the filament settings"),
+        wxMenuItem* item_material_tab = append_menu_item(windowMenu, wxID_HIGHEST + 5, _L("&Material Settings Tab") + "\tCtrl+5", _L("Show the filament settings"),
             [this/*, tab_offset*/](wxCommandEvent&) { select_tab(ETabType::FilamentSettings); }, "spool", nullptr,
             []() {return true; }, this);
         m_changeable_menu_items.push_back(item_material_tab);
@@ -2062,11 +2062,11 @@ void MainFrame::init_menubar_as_editor()
         append_menu_item(m_calibration_menu, wxID_ANY, _(L("Bed/Extruder leveling")), _(L("Create a test print to help you to level your printer bed.")),
             [this](wxCommandEvent&) { wxGetApp().bed_leveling_dialog(); });
         m_calibration_menu->AppendSeparator();
-        append_menu_item(m_calibration_menu, wxID_ANY, _(L("Filament Flow calibration")), _(L("Create a test print to help you to set your filament extrusion multiplier (visual inspection).")),
+        append_menu_item(m_calibration_menu, wxID_ANY, _(L("Material Flow calibration")), _(L("Create a test print to help you to set your filament extrusion multiplier (visual inspection).")),
             [this](wxCommandEvent&) { wxGetApp().flow_ratio_dialog(); });
         append_menu_item(m_calibration_menu, wxID_ANY, _(L("Extruder Flow calibration")), _(L("Create a test print to help you to set your extruder extrusion multiplier curve for a range of speed (precision scale needed).")),
             [this](wxCommandEvent&) { wxGetApp().flow_speed_dialog(); });
-        append_menu_item(m_calibration_menu, wxID_ANY, _(L("Filament temperature calibration")), _(L("Create a test print to help you to set your filament temperature.")),
+        append_menu_item(m_calibration_menu, wxID_ANY, _(L("Material temperature calibration")), _(L("Create a test print to help you to set your filament temperature.")),
             [this](wxCommandEvent&) { wxGetApp().filament_temperature_dialog(); });
         append_menu_item(m_calibration_menu, wxID_ANY, _(L("Extruder retraction calibration")), _(L("Create a test print to help you to set your retraction length.")),
             [this](wxCommandEvent&) { wxGetApp().calibration_retraction_dialog(); });
@@ -2240,7 +2240,7 @@ void MainFrame::update_menubar()
     m_changeable_menu_items[miExport]       ->SetItemLabel((is_fff ? _L("Export &G-code")         : _L("E&xport"))        + dots    + "\tCtrl+G");
     m_changeable_menu_items[miSend]         ->SetItemLabel((is_fff ? _L("S&end G-code")           : _L("S&end to print")) + dots    + "\tCtrl+Shift+G");
 
-    m_changeable_menu_items[miMaterialTab]  ->SetItemLabel((is_fff ? _L("&Filament Settings Tab") : _L("Mate&rial Settings Tab"))   + "\tCtrl+5");
+    m_changeable_menu_items[miMaterialTab]  ->SetItemLabel((is_fff ? _L("&Material Settings Tab") : _L("Mate&rial Settings Tab"))   + "\tCtrl+5");
     m_changeable_menu_items[miMaterialTab]  ->SetBitmap(*get_bmp_bundle(is_fff ? "spool"   : "resin"));
 
     m_changeable_menu_items[miPrinterTab]   ->SetBitmap(*get_bmp_bundle(is_fff ? "printer" : "sla_printer"));
@@ -2861,8 +2861,8 @@ void MainFrame::technology_changed()
 {
     // update menu titles
     PrinterTechnology pt = plater()->printer_technology();
-    if (int id = m_menubar->FindMenu(pt == ptFFF ? _L("Material Settings") : _L("Filament Settings")); id != wxNOT_FOUND)
-        m_menubar->SetMenuLabel(id , pt == ptSLA ? _L("Material Settings") : _L("Filament Settings"));
+    if (int id = m_menubar->FindMenu(pt == ptFFF ? _L("Material Settings") : _L("Material Settings")); id != wxNOT_FOUND)
+        m_menubar->SetMenuLabel(id , pt == ptSLA ? _L("Material Settings") : _L("Material Settings"));
 
     //if (wxGetApp().tab_panel()->GetSelection() != wxGetApp().tab_panel()->GetPageCount() - 1)
     //    wxGetApp().tab_panel()->SetSelection(wxGetApp().tab_panel()->GetPageCount() - 1);

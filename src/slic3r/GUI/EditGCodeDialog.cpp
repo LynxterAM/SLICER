@@ -268,7 +268,7 @@ wxDataViewItem EditGCodeDialog::add_presets_placeholders()
         if (const ConfigOption *optptr = full_config.optptr(opt))
             m_params_list->AppendParam(print, get_type(optptr), opt);
     
-    wxDataViewItem material = m_params_list->AppendSubGroup(group, _(is_fff ? L("Filament settings") : L("SLA Materials settings")), is_fff ? "spool" : "resin");
+    wxDataViewItem material = m_params_list->AppendSubGroup(group, _(is_fff ? L("Material settings") : L("SLA Materials settings")), is_fff ? "spool" : "resin");
     for (const auto&opt : material_options)
         if (const ConfigOption *optptr = full_config.optptr(opt))
             m_params_list->AppendParam(material, get_type(optptr), opt);

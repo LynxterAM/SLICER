@@ -608,7 +608,7 @@ protected:
     //std::map<std::string, wxWindow*> m_overrides_options;
 public:
 	TabFilament(wxBookCtrlBase* parent) :
-		Tab(parent, _(L("Filament Settings")), Slic3r::Preset::TYPE_FFF_FILAMENT) {}
+		Tab(parent, _(L("Material Settings")), Slic3r::Preset::TYPE_FFF_FILAMENT) {}
 	~TabFilament() {}
 
 	std::string icon_name(int icon_size, PrinterTechnology tech) const override { return (icon_size < 16) ? "spool" : "spool_cog"; }

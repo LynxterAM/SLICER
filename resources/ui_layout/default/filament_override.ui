@@ -1,4 +1,4 @@
-page:Filament Overrides:wrench
+page:Material Overrides:wrench
 group:Travel lift
 	setting:id$0:filament_retract_lift
 	setting:id$0:filament_travel_ramping_lift

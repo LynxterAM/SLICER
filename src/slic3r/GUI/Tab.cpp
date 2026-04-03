@@ -2889,7 +2889,7 @@ std::vector<Slic3r::GUI::PageShp> Tab::create_pages(std::string setting_type_nam
                 if ((tab = dynamic_cast<TabPrinter *>(this)) == nullptr)
                     continue;
                 widget_t reset_to_filament_color = [this, idx_page, tab](wxWindow *parent) -> wxBoxSizer * {
-                    ScalableButton* btn = new ScalableButton(parent, wxID_ANY, "undo", _L("Reset to Filament Color"),
+                    ScalableButton* btn = new ScalableButton(parent, wxID_ANY, "undo", _L("Reset to Material Color"),
                                                      wxDefaultSize, wxDefaultPosition, wxBU_LEFT | wxBU_EXACTFIT);
                     btn->SetFont(Slic3r::GUI::wxGetApp().normal_font());
                     btn->SetSize(btn->GetBestSize());
@@ -3263,7 +3263,7 @@ PageShp TabFilament::create_filament_overrides_page()
     std::vector<Slic3r::GUI::PageShp> pages = Tab::create_pages("filament_override.ui", 0);
     assert(pages.size() == 1);
     if (pages.empty())
-        return PageShp(new Page(this, m_page_view, "Filament Overrides", get_icon_id("Filament Overrides", "wrench")));
+        return PageShp(new Page(this, m_page_view, "Material Overrides", get_icon_id("Material Overrides", "wrench")));
 
     //const int extruder_idx = 0; // #ys_FIXME
 
@@ -3294,7 +3294,7 @@ PageShp TabFilament::create_filament_overrides_page()
 
 void TabFilament::update_filament_overrides_page()
 {
-    if (!m_active_page || m_active_page->title() != "Filament Overrides")
+    if (!m_active_page || m_active_page->title() != "Material Overrides")
         return;
     Page* page = m_active_page;
 
@@ -3511,7 +3511,7 @@ void TabFilament::toggle_options()
         toggle_option("filament_multitool_ramming_flow", multitool_ramming, 0);
     }
 
-    //if (m_active_page->title() == "Filament Overrides")
+    //if (m_active_page->title() == "Material Overrides")
         update_filament_overrides_page();
 }
 

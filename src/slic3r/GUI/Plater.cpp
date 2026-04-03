@@ -336,9 +336,9 @@ SlicedInfo::SlicedInfo(wxWindow *parent) :
         info_vec.push_back(std::pair<wxStaticText*, wxStaticText*>(text, info_label));
     };
 
-    init_info_label(_L("Used Filament (g)"));
-    init_info_label(_L("Used Filament (m)"));
-    init_info_label(_L("Used Filament (mm³)"));
+    init_info_label(_L("Used Material (g)"));
+    init_info_label(_L("Used Material (m)"));
+    init_info_label(_L("Used Material (mm³)"));
     init_info_label(_L("Used Material (unit)"));
     init_info_label(_L("Cost (money)"));
     init_info_label(_L("Estimated printing time"));
@@ -1488,7 +1488,7 @@ void Sidebar::update_sliced_info_sizer()
             bool imperial_units = wxGetApp().app_config->get_bool("use_inches");
             double koef = imperial_units ? ObjectManipulation::in_to_mm : 1000.0;
 
-            wxString new_label = imperial_units ? _L("Used Filament (in)") : _L("Used Filament (m)");
+            wxString new_label = imperial_units ? _L("Used Material (in)") : _L("Used Material (m)");
             if (is_wipe_tower)
                 new_label += format_wxstr(":\n    - %1%\n    - %2%", _L("objects"), _L("wipe tower"));
 
@@ -1522,7 +1522,7 @@ void Sidebar::update_sliced_info_sizer()
                         }
                         //print total for this extruder
                         if (items_printed == 0) {
-                            new_label += "\n    - " + format_wxstr(_L("Filament at extruder %1%"), filament_id + 1);
+                            new_label += "\n    - " + format_wxstr(_L("Material at extruder %1%"), filament_id + 1);
                             //new_label += from_u8((boost::format("\n    - %1% %2%") % _utf8(L("Color")) % ps.color_extruderid_to_used_filament.size()).str());
                             info_text += wxString::Format("\n%.2f", filament_vol * mm3_to_m);
                         } 
@@ -1536,14 +1536,14 @@ void Sidebar::update_sliced_info_sizer()
             p->sliced_info->SetTextAndShow(siFilament_m, info_text, new_label);
 
             koef = imperial_units ? pow(ObjectManipulation::mm_to_in, 3) : 1.0f;
-            new_label = imperial_units ? _L("Used Filament (in³)") : _L("Used Filament (mm³)");
+            new_label = imperial_units ? _L("Used Material (in³)") : _L("Used Material (mm³)");
             info_text = wxString::Format("%.2f", imperial_units ? ps.total_extruded_volume * koef : ps.total_extruded_volume);
             p->sliced_info->SetTextAndShow(siFilament_mm3,  info_text,      new_label);
 
             if (ps.total_weight == 0.0)
                 p->sliced_info->SetTextAndShow(siFilament_g, "N/A");
             else {
-                new_label = _L("Used Filament (g)");
+                new_label = _L("Used Material (g)");
                 info_text = wxString::Format("%.2f", ps.total_weight);
 
                 
@@ -1585,7 +1585,7 @@ void Sidebar::update_sliced_info_sizer()
                             }
                             //print total for this extruder
                             if (items_printed == 0) {
-                                new_label += "\n    - " + format_wxstr(_L("Filament at extruder %1%"), filament_id + 1);
+                                new_label += "\n    - " + format_wxstr(_L("Material at extruder %1%"), filament_id + 1);
                                 //new_label += from_u8((boost::format("\n    - %1% %2%") % _utf8(L("Color")) % ps.color_extruderid_to_used_filament.size()).str());
                                 info_text += wxString::Format("\n%.2f", filament_vol * mm3_to_g);
                                 if (spool_weight != 0.0)
@@ -4538,13 +4538,13 @@ void Plater::priv::on_slicing_update(SlicingStatusEvent &evt)
         }
         if (templ_cnt > 0) {
             const std::string message_notif = GUI::format("%1%\n%2%\n\n%3%\n\n%4% "
-                , _L_PLURAL("You are using template filament preset.", "You are using template filament presets.", templ_cnt)
+                , _L_PLURAL("You are using template material preset.", "You are using template material presets.", templ_cnt)
                 , names
                 , _u8L("Please note that template presets are not customized for specific printer and should only be used as a starting point for creating your own user presets.")
                 ,_u8L("More info at"));
             // warning dialog proccessing cuts text at first '/n' - pass the text without new lines (and without filament names).
             const std::string message_dial = GUI::format("%1% %2% %3%"
-                , _L_PLURAL("You are using template filament preset.", "You are using template filament presets.", templ_cnt)
+                , _L_PLURAL("You are using template material preset.", "You are using template material presets.", templ_cnt)
                 , _u8L("Please note that template presets are not customized for specific printer and should only be used as a starting point for creating your own user presets.")
                 , "<a href=https://help.prusa3d.com/article/template-filaments_467599>https://help.prusa3d.com/</a>"
             );
