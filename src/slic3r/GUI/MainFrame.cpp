@@ -133,7 +133,7 @@ static wxIcon main_frame_icon(GUI_App::EAppMode app_mode)
     return wxIcon(path, wxBITMAP_TYPE_ICO);
 #else // _WIN32
     wxIcon icon;
-    icon.CopyFromBitmap(get_bmp_bundle(wxGetApp().dark_icon_name(), 128)->GetBitmap(wxSize(128, 128)));
+    icon.CopyFromBitmap(get_bmp_bundle(GUI_App::dark_mode() ? wxGetApp().light_icon_name() : wxGetApp().dark_icon_name(), 128)->GetBitmap(wxSize(128, 128)));
     return icon;
 #endif // _WIN32
 }

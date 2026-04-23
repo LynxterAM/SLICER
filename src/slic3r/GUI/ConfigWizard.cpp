@@ -2134,7 +2134,7 @@ void PageTemperatures::apply_custom_config(DynamicPrintConfig &config)
 
 ConfigWizardIndex::ConfigWizardIndex(wxWindow *parent)
     : wxScrolledWindow(parent)
-    , bg(ScalableBitmap(parent, get_bmp_bundle(wxGetApp().dark_icon_name(), 192)->GetBitmap(wxSize(192, 192)), 192))
+    , bg(ScalableBitmap(parent, get_bmp_bundle(GUI_App::dark_mode() ? wxGetApp().light_icon_name() : wxGetApp().dark_icon_name(), 192)->GetBitmap(wxSize(192, 192)), 192))
     , bullet_black(ScalableBitmap(parent, "bullet_black.png"))
     , bullet_blue(ScalableBitmap(parent, "bullet_blue.png"))
     , bullet_white(ScalableBitmap(parent, "bullet_white.png"))
