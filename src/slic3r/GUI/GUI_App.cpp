@@ -1944,9 +1944,12 @@ bool GUI_App::dark_mode()
 #endif
 }
 
+//FIXME: set default in color.ui
+// also save a different color for dark & light. Currently, only one is saved in the ini.
 const wxColour GUI_App::get_label_default_clr_system(bool is_dark_mode)
 {
-    return is_dark_mode ? wxColour(115, 220, 103) : wxColour(26, 132, 57);
+    //return is_dark_mode ? wxColour(115, 220, 103) : wxColour(26, 132, 57);
+    return get_label_default_clr_default(is_dark_mode);
 }
 
 const wxColour GUI_App::get_label_default_clr_modified(bool is_dark_mode)

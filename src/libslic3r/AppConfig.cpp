@@ -354,10 +354,10 @@ void AppConfig::set_defaults()
         set("use_free_camera", "0");
 
     if (get("3D_mouse_drag").empty())
-        set("3D_mouse_drag", "0");
+        set("3D_mouse_drag", "1");
 
     if (get("mouse_middle_target").empty())
-        set("mouse_middle_target", "1");
+        set("mouse_middle_target", "0");
 
     if (get("reverse_mouse_wheel_zoom").empty())
         set("reverse_mouse_wheel_zoom", "0");
@@ -409,6 +409,20 @@ void AppConfig::set_defaults()
 
     if (get("angle_precision").empty())
         set("angle_precision", "1.");
+
+    //layout mode
+
+    if (get("tab_settings_layout_mode").empty())
+        set("tab_settings_layout_mode", "0");
+
+    if (get("old_settings_layout_mode").empty())
+        set("old_settings_layout_mode", "1");
+
+    if (get("new_settings_layout_mode").empty())
+        set("new_settings_layout_mode", "0");
+
+    if (get("dlg_settings_layout_mode").empty())
+        set("dlg_settings_layout_mode", "0");
 
     // Remove legacy window positions/sizes
     erase("", "main_frame_maximized");
