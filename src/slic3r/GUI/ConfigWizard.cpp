@@ -3693,8 +3693,6 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
 
     p->btn_sel_all->Bind(wxEVT_BUTTON, [this](const wxCommandEvent &) {
 #ifdef ALLOW_PRUSA_FIRST
-        p->any_sla_selected = true;
-        p->load_pages();
         if(p->page_fff)
             p->page_fff->select_all(true, false);
         if (p->page_msla)
