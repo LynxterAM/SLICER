@@ -1,6 +1,6 @@
 #note: all settings are id$0 as the slicer consider there is only one value in the arrays in the gui.
 page:Material:spool
-group:filament_spool_weight_event:Filament
+group:filament_spool_weight_event:Material
 	setting:id$0:filament_colour
 	setting:id$0:filament_diameter
 	setting:id$0:filament_density
