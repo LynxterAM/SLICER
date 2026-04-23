@@ -3540,9 +3540,6 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
     topsizer->AddSpacer(INDEX_MARGIN);
     topsizer->Add(p->hscroll, 1, wxEXPAND);
 
-    p->btn_sel_all = new wxButton(this, wxID_ANY, _L("Select all standard printers in this page"));
-    p->btnsizer->Add(p->btn_sel_all);
-
     p->btn_prev = new wxButton(this, wxID_ANY, _L("< &Back"));
     p->btn_next = new wxButton(this, wxID_ANY, _L("&Next >"));
     p->btn_finish = new wxButton(this, wxID_APPLY, _L("&Finish"));
@@ -3553,13 +3550,11 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
     p->btnsizer->Add(p->btn_finish, 0, wxLEFT, BTN_SPACING);
     p->btnsizer->Add(p->btn_cancel, 0, wxLEFT, BTN_SPACING);
 
-    wxGetApp().UpdateDarkUI(p->btn_sel_all);
     wxGetApp().UpdateDarkUI(p->btn_prev);
     wxGetApp().UpdateDarkUI(p->btn_next);
     wxGetApp().UpdateDarkUI(p->btn_finish);
     wxGetApp().UpdateDarkUI(p->btn_cancel);
 
-    wxGetApp().SetWindowVariantForButton(p->btn_sel_all);
     wxGetApp().SetWindowVariantForButton(p->btn_prev);
     wxGetApp().SetWindowVariantForButton(p->btn_next);
     wxGetApp().SetWindowVariantForButton(p->btn_finish);
@@ -3691,24 +3686,6 @@ ConfigWizard::ConfigWizard(wxWindow *parent)
             this->EndModal(wxID_OK);
     });
 
-    p->btn_sel_all->Bind(wxEVT_BUTTON, [this](const wxCommandEvent &) {
-#ifdef ALLOW_PRUSA_FIRST
-        if(p->page_fff)
-            p->page_fff->select_all(true, false);
-        if (p->page_msla)
-            p->page_msla->select_all(true, false);
-        p->index->go_to(p->page_mode);
-#else
-        ConfigWizardPage *page = p->index->active_page();
-        PagePrinters *page_printers = dynamic_cast<PagePrinters*>(page);
-        if (page_printers)
-            page_printers->select_all(true, false);
-        if (p->page_update) {
-            p->index->go_to(p->page_update);
-        }
-#endif
-    });
-
     p->index->Bind(EVT_INDEX_PAGE, [this](const wxCommandEvent &) {
         const bool is_last = p->index->active_is_last();
         p->btn_next->Show(! is_last);
@@ -3787,7 +3764,6 @@ void ConfigWizard::on_dpi_changed(const wxRect &suggested_rect)
 
     msw_buttons_rescale(this, em, { wxID_APPLY, 
                                     wxID_CANCEL,
-                                    p->btn_sel_all->GetId(),
                                     p->btn_next->GetId(),
                                     p->btn_prev->GetId() });
 
