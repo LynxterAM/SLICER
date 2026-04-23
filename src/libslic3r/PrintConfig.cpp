@@ -2783,21 +2783,14 @@ void PrintConfigDef::init_fff_params()
     def->max = 100;
     def->set_enum_values(ConfigOptionDef::GUIType::f_enum_open, {
         { "0", "0%" },
-        { "4", "4%" },
-        { "5.5", "5.5%" },
-        { "7.5", "7.5%" },
-        { "10", "10%" },
-        { "13", "13%" },
-        { "18", "18%" },
-        { "23", "23%" },
-        { "31", "31%" },
-        { "42", "42%" },
-        { "55", "55%" },
-        { "75", "75%" },
+        { "20", "20%" },
+        { "40", "40%" },
+        { "60", "60%" },
+        { "80", "80%" },
         //{ "100", "100%" } // can still be entered, but not showing it may make people increase solid layer count instead (which is the proper way).
     });
     def->mode = comSimpleAE | comPrusa;
-    def->set_default_value(new ConfigOptionPercent(18));
+    def->set_default_value(new ConfigOptionPercent(20));
 
     def = this->add("fill_pattern", coEnum);
     def->label = L("Pattern");

@@ -337,3 +337,47 @@ void s_noperi_set(string &out set_val, int idx)
 	if (idx == 0) set_int("no_perimeter_unsupported_algo",0);
 	else set_string("no_perimeter_unsupported_algo", "filled");
 }
+
+// "simple mode" settings fill_density
+
+int last_solid_every = -1;
+
+float s_fill_density_get()
+{
+	float density = 100 * get_float("fill_density");
+	int solid_every = get_int("solid_infill_every_layers");
+	if (solid_every  == 1) {
+		density = 100;
+	}
+	return density;
+}
+
+void s_fill_density_set(float new_density)
+{
+	int solid_every = get_int("solid_infill_every_layers");
+	float density = 100 * get_float("fill_density");
+	if (new_density > 99) {
+		if (solid_every != 1) {
+			last_solid_every = solid_every;
+		}
+		set_int("solid_infill_every_layers", 1);
+        if (density == 0) {
+            // don't let the density to 0, or the solid_infill_every_layers is disabled.
+            back_initial_value("fill_density");
+            density = 100 * get_float("fill_density");
+            if (density == 0) {
+                set_float("fill_density", 0.42);
+            }
+        }
+	} else {
+		set_float("fill_density", new_density * 0.01);
+		if (last_solid_every > -1) {
+			set_int("solid_infill_every_layers", last_solid_every);
+			last_solid_every = -1;
+		} else {
+			if (solid_every == 1) {
+				set_int("solid_infill_every_layers", 0);
+			}
+		}
+	}
+}

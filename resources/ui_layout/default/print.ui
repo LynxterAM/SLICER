@@ -24,7 +24,8 @@ group:Horizontal shells
 group:Infill
 	line:Sparse infill pattern
 		setting:tags$Simple:label_width$0:label$_:fill_pattern
-		setting:tags$Simple:label_width$6:label$Density:width$8:sidetext_width$1:fill_density
+#		setting:tags$Simple:label_width$6:label$Density:width$8:sidetext_width$1:fill_density
+		setting:simple:script:percent:depends$fill_density$solid_infill_every_layers:hints$0$0$20$20$40$40$60$60$80$80$100$100:depends$fill_density$solid_infill_every_layers:label$Fill density:tooltip$Density of internal infill, expressed in the range 0% - 100%:width$6:sidetext$%:sidetext_width$4:label$Fill density:tooltip$Density of internal infill, expressed in the range 0% - 100%.\nSet 0 to remove any sparse infill.\nA value of 100% will activate 'solid_infill_every_layers' to have solid infill, with the solid infill pattern.:s_fill_density
 	end_line
 	setting:tags$Simple:label_width$20:label$Top infill pattern:top_fill_pattern
 	setting:tags$Simple:sidetext_width$0:label$Supporting dense layer:infill_dense
@@ -615,11 +616,6 @@ group:Other
 group:Post-processing script
 	setting:full_width:height$5:post_process
 	post_process_explanation
-group:Post-processing milling
-	setting:milling_post_process
-	setting:milling_extra_size
-	setting:milling_after_z
-	setting:milling_speed
 	
 page:Notes:note
 group:no_title:Notes
