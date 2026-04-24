@@ -13,8 +13,8 @@ set(SLIC3R_APP_PROG_ID "slicer.1")
 set(SLIC3R_GUID "cf4bad66-be9d-451e-a57e-2527be7d6261")
 # versions
 set(SLIC3R_VERSION_TAG "-beta+UNKNOWN")
-set(SLIC3R_RC_VERSION "1,0,0,1")
-set(SLIC3R_RC_VERSION_DOTS "1.0.0.1")
+set(SLIC3R_RC_VERSION "1,0,0,2")
+set(SLIC3R_RC_VERSION_DOTS "1.0.0.2")
 message(STATUS "SLIC3R_RC_VERSION = ${SLIC3R_RC_VERSION}")
 message(STATUS "SLIC3R_RC_VERSION_DOTS = ${SLIC3R_RC_VERSION_DOTS}")
 message(STATUS "SLIC3R_VERSION_TAG = ${SLIC3R_VERSION_TAG}")
@@ -32,7 +32,7 @@ set(GCODEVIEWER_APP_CMD "${SLIC3R_APP_CMD}-gcodeviewer")
 set(GCODEVIEWER_APP_PROG_ID "${SLIC3R_APP_NAME}.GCodeViewer.1")
 
 # string to be added after the SLIC3R_APP_NAME on some places
-set(SLIC3R_BASED_ON " based on SuperSlicer")
+set(SLIC3R_BASED_ON "")
 # to get he github repo
 set(SLIC3R_GITHUB "LynxterAM/SLICER")
 # download url
