@@ -1088,7 +1088,7 @@ void choose_app_dir(GUI_App &app) {
     if (same_version.size() + old_versions.size() == 0) {
         choice = 0;
     } else {
-        //need fonts for MessageDialog
+        // need fonts for MessageDialog
         app.init_fonts();
         // else, reuse by default
         MessageDialog first_dialog(nullptr,
@@ -1152,7 +1152,7 @@ void choose_app_dir(GUI_App &app) {
     my_default_installation.other_keys["config_path_relative"] = "1";
     assert(!boost::filesystem::exists(my_default_installation.get_config_path(app.app_config->get_root_data_dir())));
     my_default_installation.version = Semver(SLIC3R_VERSION_FULL);
-    
+
     AppConfig::ConfigurationEntry my_new_installation = my_default_installation;
     if (choice > 0) {
         choice--;
@@ -2295,13 +2295,33 @@ void GUI_App::init_fonts()
     static bool first_run = true;
     if (first_run) {
         first_run = false;
-        if (!wxFont::AddPrivateFont(Slic3r::resources_dir() + "/fonts/GT-America-Expanded-Light.otf")) // this needs to be done just once per the application run
-        {
+
+        auto copy_and_install_font = [](std::string_view font_filename) -> bool {
+            assert(boost::filesystem::exists(Slic3r::resources_path() / "fonts"));
+            boost::filesystem::path cache_path;
+            if (!Slic3r::data_dir().empty()) {
+                cache_path = Slic3r::data_path() / "cache";
+            } else {
+                cache_path = boost::filesystem::temp_directory_path();
+            }
+            // copy fonts into configuration, to avoid blocking them
+            if (!boost::filesystem::exists(cache_path / "fonts" / font_filename) &&
+                boost::filesystem::exists(Slic3r::resources_path() / "fonts" / font_filename)) {
+                if (!boost::filesystem::exists(cache_path / "fonts")) {
+                    boost::filesystem::create_directories(cache_path / "fonts");
+                }
+                boost::filesystem::copy(Slic3r::resources_path() / "fonts" / font_filename,
+                                        cache_path / "fonts" / font_filename);
+            }
+            return wxFont::AddPrivateFont(
+                (cache_path / "fonts" / font_filename)
+                    .string()); // this needs to be done just once per the application run
+        };
+        if (!copy_and_install_font("GT-America-Expanded-Light.otf")) {
             wxLogError("Could not add a private font");
             return;
         }
-        if (!wxFont::AddPrivateFont(Slic3r::resources_dir() + "/fonts/Outfit-ExtraBold.ttf")) // this needs to be done just once per the application run
-        {
+        if (!copy_and_install_font("Outfit-ExtraBold.ttf")) {
             wxLogError("Could not add a private font");
             return;
         }
@@ -4075,7 +4095,7 @@ bool GUI_App::run_wizard(ConfigWizard::RunReason reason, ConfigWizard::StartPage
         this->preset_updater->reload_all_vendors();
         // don't run the bundle manager but just install the vendor version
         this->preset_updater->sync_async([this, reason, start_page](int update_count) {
-            bool found;
+            bool found = false;
             std::lock_guard<std::recursive_mutex> guard(this->preset_updater->all_vendors_mutex);
             for (const auto &[id, vendor] : this->preset_updater->all_vendors) {
                 if (vendor.profile.id == ALLOW_PRUSA_FIRST) {

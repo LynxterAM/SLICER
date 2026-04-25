@@ -33,7 +33,7 @@ public:
         Count
     };
 
-    typedef std::array<std::string, static_cast<size_t>(EShaderType::Count)> ShaderFilenames;
+    typedef std::array<boost::filesystem::path, static_cast<size_t>(EShaderType::Count)> ShaderFilenames;
     typedef std::array<std::string, static_cast<size_t>(EShaderType::Count)> ShaderSources;
 
 private:

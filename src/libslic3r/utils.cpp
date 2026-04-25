@@ -332,7 +332,8 @@ void set_data_dir(const std::string &dir)
 
 const std::string& data_dir()
 {
-    assert(!g_data_dir.empty());
+    // this function can be used to check for emptyness
+    //assert(!g_data_dir.empty());
     return g_data_dir;
 }
 
