@@ -4579,11 +4579,12 @@ void PrintConfigDef::init_fff_params()
     def             = this->add("overhangs_dynamic_fan_speed", coGraphs);
     def->label      = L("Dynamic overhang speeds");
     def->category   = OptionCategory::speed;
-    def->tooltip    = L("This setting can only works correctly if dynamic speed is also enabled (overhangs_dynamic_fan_speed)."
-        "\nOverhang size is expressed as a percentage of overlap of the extrusion with the previous layer: "
-        "100% would be full overlap (no overhang), while 0% represents full overhang (floating extrusion, bridge)."
-        "\nFan speeds for overhang sizes in between are calculated via linear interpolation."
-        "\nIf enabled, overhangs_fan_speed is disabled, as the fan speed for full overhang is used.");
+    def->tooltip    = L("Adjusts the fan speed based on the severity of overhangs."
+        "\nOverhang size is defined as the percentage of overlap with the previous layer: "
+        "100% means full overlap (no overhang), while 0% indicates a full overhang (unsupported extrusion, i.e., a bridge)."
+        "\nFan speeds for intermediate overhang values are calculated using linear interpolation."
+        "\nWhen this option is enabled, 'overhangs_fan_speed' is ignored, as this setting now control the overhang fan speed."
+        " For extrusion that not supported at all, the fan spedd for 0% is used.");
     def->sidetext   = L("%");
     def->is_vector_extruder = true;
     def->can_be_disabled = true;
