@@ -1243,7 +1243,7 @@ void PrintObject::_transform_hole_to_polyholes()
             }
         }
     }
-    //create a polyhole per id and replace holes points by it.
+    // create a polyhole per id and replace holes points by it.
     for (auto &entry : id2layers2hole) {
         Polygons polyholes = create_polyholes(entry.first.center, entry.first.max_diameter, scale_t(print()->config().nozzle_diameter.get_at(entry.first.extruder_id)), entry.first.is_twist);
         for (auto& poly_to_replace : entry.second) {
