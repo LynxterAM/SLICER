@@ -1851,8 +1851,9 @@ void GCodeGenerator::_do_export(Print& print_mod, GCodeOutputStream &file, Thumb
      this->m_throw_if_canceled();
 
     // Set other general things.
-    preamble_to_put_start_layer.append(this->preamble());
-
+     if (this->config().start_gcode_manual) {
+         preamble_to_put_start_layer.append(this->preamble());
+     }
     // Calculate wiping points if needed
     DoExport::init_ooze_prevention(print, m_ooze_prevention);
      this->m_throw_if_canceled();
@@ -1894,17 +1895,29 @@ void GCodeGenerator::_do_export(Print& print_mod, GCodeOutputStream &file, Thumb
                 // Set initial extruder only after custom start G-code.
                 // Ugly hack: Do not set the initial extruder if the extruder is primed using the MMU priming towers at the edge of the print bed.
                 if (!(has_wipe_tower && print.config().single_extruder_multi_material_priming)) {
-                    preamble_to_put_start_layer.append(this->set_extruder(initial_extruder_id, 0.));
+                    if (this->config().start_gcode_manual) {
+                        this->set_extruder(initial_extruder_id, 0);
+                    } else {
+                        preamble_to_put_start_layer.append(this->set_extruder(initial_extruder_id, 0));
+                    }
                 } else {
                     m_writer.toolchange(initial_extruder_id);
                 }
             } else {
                 // set writer to the tool as should be set in the start_gcode.
-                preamble_to_put_start_layer.append(this->set_extruder(initial_extruder_id, 0., true));
+                if (this->config().start_gcode_manual) {
+                    this->set_extruder(initial_extruder_id, 0, true);
+                } else {
+                    preamble_to_put_start_layer.append(this->set_extruder(initial_extruder_id, 0, true));
+                }
             }
         } else {
             // if we are running a single-extruder setup, just set the extruder and "return nothing"
-            preamble_to_put_start_layer.append(this->set_extruder(initial_extruder_id, 0.));
+            if (this->config().start_gcode_manual) {
+                this->set_extruder(initial_extruder_id, 0);
+            } else {
+                preamble_to_put_start_layer.append(this->set_extruder(initial_extruder_id, 0));
+            }
         }
     } else {
         // the right tool should have been set by the user.
@@ -1915,11 +1928,16 @@ void GCodeGenerator::_do_export(Print& print_mod, GCodeOutputStream &file, Thumb
     m_writer.tool()->reset_retract();
 
     //write temps after custom gcodes to ensure the temperature are good. (after tool selection)
-    if ((initial_extruder_id != (uint16_t)-1) && print.config().first_layer_temperature.get_at(initial_extruder_id) != 0)
-        this->_print_first_layer_extruder_temperatures(preamble_to_put_start_layer, print, start_all_gcode, initial_extruder_id, true);
-    if ((initial_extruder_id != (uint16_t)-1) && print.config().first_layer_bed_temperature.get_at(initial_extruder_id) != 0)
-        this->_print_first_layer_bed_temperature(preamble_to_put_start_layer, print, start_all_gcode, initial_extruder_id, true);
-    
+    if (print.config().autoemit_temperature_commands && !this->config().start_gcode_manual) {
+        if ((initial_extruder_id != (uint16_t) -1) &&
+            print.config().first_layer_temperature.get_at(initial_extruder_id) != 0)
+            this->_print_first_layer_extruder_temperatures(preamble_to_put_start_layer, print, start_all_gcode,
+                                                           initial_extruder_id, true);
+        if ((initial_extruder_id != (uint16_t) -1) &&
+            print.config().first_layer_bed_temperature.get_at(initial_extruder_id) != 0)
+            this->_print_first_layer_bed_temperature(preamble_to_put_start_layer, print, start_all_gcode,
+                                                     initial_extruder_id, true);
+    }
     // Do all objects for each layer.
     if (initial_extruder_id != (uint16_t)-1) {
         if (print.config().complete_objects.value) {
