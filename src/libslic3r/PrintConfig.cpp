@@ -231,7 +231,8 @@ static const t_config_enum_values s_keys_map_SupportMaterialStyle {
     { "grid",           smsGrid },
     { "snug",           smsSnug },
     { "tree",           smsTree },
-    { "organic",        smsOrganic }
+    { "organic",        smsOrganic },
+    { "filled",         smsFilled }
 };
 CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(SupportMaterialStyle)
 
@@ -6743,7 +6744,8 @@ void PrintConfigDef::init_fff_params()
     def->set_enum<SupportMaterialStyle>({
         { "grid", L("Grid") }, 
         { "snug", L("Snug") },
-        { "organic", L("Organic") }
+        { "organic", L("Organic") },
+        { "filled", L("Filled") }
     });
     def->mode = comAdvancedE | comPrusa;
     def->set_default_value(new ConfigOptionEnum<SupportMaterialStyle>(smsGrid));

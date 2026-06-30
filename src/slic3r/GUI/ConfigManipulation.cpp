@@ -192,9 +192,12 @@ void ConfigManipulation::update_print_fff_config(DynamicPrintConfig* config, con
         }
     }
 
-    if (config->opt_bool("wipe_tower") && config->opt_bool("support_material") && 
+    SupportMaterialStyle support_material_style_for_wipe = config->opt_enum<SupportMaterialStyle>("support_material_style");
+    if (config->opt_bool("wipe_tower") && config->opt_bool("support_material") &&
         // Organic supports are always synchronized with object layers as of now.
-        config->opt_enum<SupportMaterialStyle>("support_material_style") != smsOrganic) {
+        support_material_style_for_wipe != smsOrganic &&
+        // Filled supports are synchronized by construction and are soluble-only.
+        support_material_style_for_wipe != smsFilled) {
         // soluble support
         if (((ConfigOptionEnumGeneric*)config->option("support_material_contact_distance_type"))->value == zdNone) {
             if (!config->opt_bool("support_material_synchronize_layers")) {
@@ -534,17 +537,20 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     bool have_raft = config->opt_int("raft_layers") > 0;
     bool have_support_material = config->opt_bool("support_material") || have_raft;
     bool have_support_material_auto = have_support_material && config->opt_bool("support_material_auto");
-    bool have_support_interface = have_support_material && (config->opt_int("support_material_interface_layers") > 0 || config->opt_int("support_material_bottom_interface_layers") > 0);
     bool have_support_soluble = have_support_material && ((ConfigOptionEnumGeneric*)config->option("support_material_contact_distance_type"))->value == zdNone;
-    auto support_material_style = config->opt_enum<SupportMaterialStyle>("support_material_style");
-    for (auto el : { "support_material_style", "support_material_pattern", "support_material_with_sheath",
-                    "support_material_spacing", "support_material_angle", "support_material_angle_height", 
+    SupportMaterialStyle support_material_style = config->opt_enum<SupportMaterialStyle>("support_material_style");
+    bool has_filled_supports = have_support_material && support_material_style == smsFilled;
+    bool have_support_interface = have_support_material &&
+        (has_filled_supports || config->opt_int("support_material_interface_layers") > 0 || config->opt_int("support_material_bottom_interface_layers") > 0);
+    toggle_field("support_material_style", have_support_material);
+    toggle_field("support_material_contact_distance_type", have_support_material);
+    toggle_field("support_material_xy_spacing", have_support_material);
+    for (const char *el : { "support_material_pattern", "support_material_with_sheath",
+                    "support_material_spacing", "support_material_angle", "support_material_angle_height",
                     "support_material_bottom_interface_layers", "support_material_interface_layers",
                     "dont_support_bridges", "support_material_extrusion_width",
-                    "support_material_contact_distance_type",
-                    "support_material_xy_spacing",
                     "support_material_layer_height"})
-        toggle_field(el, have_support_material);
+        toggle_field(el, have_support_material && !has_filled_supports);
     toggle_field("support_material_threshold", have_support_material_auto);
     toggle_field("support_material_bottom_contact_distance", have_support_material && ! have_support_soluble);
     toggle_field("support_material_closing_radius", have_support_material && support_material_style == smsSnug);
@@ -560,11 +566,15 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     for (auto el : { "support_material_contact_distance", "support_material_bottom_contact_distance" })
         toggle_field(el, have_support_material && !have_support_soluble);
 
-    for (auto el : { "support_material_bottom_interface_pattern", "support_material_top_interface_pattern", "support_material_interface_spacing", "support_material_interface_extruder",
-                    "support_material_interface_speed", "support_material_interface_contact_loops", "support_material_interface_layer_height"
-                    "support_material_interface_angle", "support_material_interface_angle_increment", "support_material_bottom_interface_expansion"})
+    for (const char *el : { "support_material_bottom_interface_pattern", "support_material_interface_spacing",
+                    "support_material_interface_contact_loops", "support_material_interface_layer_height",
+                    "support_material_bottom_interface_expansion" })
+        toggle_field(el, have_support_material && have_support_interface && !has_filled_supports);
+    for (const char *el : { "support_material_top_interface_pattern", "support_material_interface_extruder",
+                    "support_material_interface_speed", "support_material_interface_angle", "support_material_interface_angle_increment" })
         toggle_field(el, have_support_material && have_support_interface);
-    toggle_field("support_material_synchronize_layers", have_support_soluble);
+
+    toggle_field("support_material_synchronize_layers", have_support_soluble && !has_filled_supports);
 
     // organic suport don't use soem fields, force disable them.
     if (has_organic_supports) {

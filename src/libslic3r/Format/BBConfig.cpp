@@ -470,6 +470,7 @@ void init()
     value_translation_map["support_material_style"]["tree_strong"] = "snug"; // organic in 2.7
     value_translation_map["support_material_style"]["tree_hybrid"] = "snug"; // organic in 2.7
     value_translation_map["support_material_style"]["organic"] = "snug"; // organic in 2.7
+    value_translation_map["support_material_style"]["filled"] = "filled";
     value_translation_map["retract_lift_top"]["Bottom Only"] = "Not on top";
     value_translation_map["retract_lift_top"]["Top Only"] = "Only on top";
     value_translation_map["thumbnails_format"]["BTT_TFT"] = "BIQU";

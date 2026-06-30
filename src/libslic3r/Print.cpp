@@ -813,6 +813,17 @@ std::pair<PrintBase::PrintValidationError, std::string> Print::validate(std::vec
                     return { PrintBase::PrintValidationError::pveWrongSettings, _u8L("Variable layer height is not supported with Organic supports.") };
         }
 
+    for (const PrintObject *print_object : m_objects) {
+        if (print_object->has_support_material() && print_object->config().support_material_style.value == smsFilled) {
+            // Filled supports intentionally model only soluble, synchronized interfaces.
+            // Rafts and Z contact gaps require the legacy support layer split.
+            if (print_object->config().support_material_contact_distance_type.value != zdNone)
+                return { PrintBase::PrintValidationError::pveWrongSettings, _u8L("Filled supports require support material contact distance type set to None.") };
+            if (print_object->config().raft_layers.value > 0)
+                return { PrintBase::PrintValidationError::pveWrongSettings, _u8L("Filled supports do not support raft layers.") };
+        }
+    }
+
     if (this->has_wipe_tower() && ! m_objects.empty()) {
         // Make sure all extruders use same diameter filament and have the same nozzle diameter
         // EPSILON comparison is used for nozzles and 10 % tolerance is used for filaments
@@ -924,7 +935,9 @@ std::pair<PrintBase::PrintValidationError, std::string> Print::validate(std::vec
                            "If support is to be printed with the current extruder (support_material_extruder == 0 or support_material_interface_extruder == 0), "
                            "all nozzles have to be of the same diameter.") };
                 }
-                if (this->has_wipe_tower() && object->config().support_material_style != smsOrganic) {
+                if (this->has_wipe_tower() &&
+                    object->config().support_material_style != smsOrganic &&
+                    object->config().support_material_style != smsFilled) {
                     if (object->config().support_material_contact_distance_type.value == zdNone) {
                         // Soluble interface
                         if (! object->config().support_material_synchronize_layers)

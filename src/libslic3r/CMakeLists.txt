@@ -391,6 +391,8 @@ set(SLIC3R_SOURCES
     SlicingAdaptive.hpp
     Subdivide.cpp
     Subdivide.hpp
+    Support/Filled/FilledSupport.cpp
+    Support/Filled/FilledSupport.hpp
     Support/SupportCommon.cpp
     Support/SupportCommon.hpp
     Support/SupportDebug.cpp

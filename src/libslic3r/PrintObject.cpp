@@ -40,6 +40,7 @@
 #include "Fill/FillAdaptive.hpp"
 #include "Fill/FillLightning.hpp"
 #include "Format/STL.hpp"
+#include "Support/Filled/FilledSupport.hpp"
 #include "Support/SupportMaterial.hpp"
 #include "SupportSpotsGenerator.hpp"
 #include "TriangleSelectorWrapper.hpp"
@@ -4918,7 +4919,9 @@ void PrintObject::combine_infill()
 
 void PrintObject::_generate_support_material()
 {
-    if (this->has_support() && (m_config.support_material_style.value == smsTree || m_config.support_material_style.value == smsOrganic)) {
+    if (this->has_support() && m_config.support_material_style.value == smsFilled) {
+        filled_support_generate(*this, std::function<void()>([this](){ this->throw_if_canceled(); }));
+    } else if (this->has_support() && (m_config.support_material_style.value == smsTree || m_config.support_material_style.value == smsOrganic)) {
         fff_tree_support_generate(*this, std::function<void()>([this](){ this->throw_if_canceled(); }));
     } else {
         // If support style is set to Organic however only raft will be built but no support,

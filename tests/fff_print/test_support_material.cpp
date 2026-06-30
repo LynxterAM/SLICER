@@ -1,5 +1,6 @@
 #include <catch2/catch.hpp>
 
+#include "libslic3r/ExtrusionEntity.hpp"
 #include "libslic3r/GCodeReader.hpp"
 #include "libslic3r/Layer.hpp"
 
@@ -7,6 +8,24 @@
 
 using namespace Slic3r::Test;
 using namespace Slic3r;
+
+namespace {
+
+struct FilledSupportRoleVisitor : public ExtrusionVisitorRecursiveConst
+{
+    using ExtrusionVisitorRecursiveConst::use;
+
+    bool saw_entity = false;
+    bool only_interface = true;
+
+    void default_use(const ExtrusionEntity &entity) override
+    {
+        saw_entity = true;
+        only_interface = only_interface && entity.role() == ExtrusionRole::SupportMaterialInterface;
+    }
+};
+
+}
 
 TEST_CASE("SupportMaterial: Three raft layers created", "[SupportMaterial]")
 {
@@ -16,6 +35,81 @@ TEST_CASE("SupportMaterial: Three raft layers created", "[SupportMaterial]")
 		{ "raft_layers",      3 }
 		});
     REQUIRE(print.objects().front()->support_layers().size() == 3);
+}
+
+TEST_CASE("SupportMaterial: filled style parses", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict("support_material_style", "filled");
+    const ConfigOptionEnum<SupportMaterialStyle> *style = config.opt<ConfigOptionEnum<SupportMaterialStyle>>("support_material_style");
+    REQUIRE(style->value == smsFilled);
+    REQUIRE(config.opt_serialize("support_material_style") == "filled");
+}
+
+TEST_CASE("SupportMaterial: filled style validates soluble-only", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", "filled" },
+        { "support_material_contact_distance_type", "filament" }
+    });
+
+    Print print;
+    Model model;
+    init_print({ TestMesh::overhang }, print, model, config);
+    std::pair<PrintBase::PrintValidationError, std::string> validation = print.validate();
+    REQUIRE(validation.first == PrintBase::PrintValidationError::pveWrongSettings);
+    REQUIRE(validation.second.find("Filled supports require") != std::string::npos);
+}
+
+TEST_CASE("SupportMaterial: filled style rejects raft", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", "filled" },
+        { "support_material_contact_distance_type", "none" },
+        { "raft_layers", 1 }
+    });
+
+    Print print;
+    Model model;
+    init_print({ TestMesh::overhang }, print, model, config);
+    std::pair<PrintBase::PrintValidationError, std::string> validation = print.validate();
+    REQUIRE(validation.first == PrintBase::PrintValidationError::pveWrongSettings);
+    REQUIRE(validation.second.find("raft") != std::string::npos);
+}
+
+TEST_CASE("SupportMaterial: filled style generates synchronized interface-only layers", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", "filled" },
+        { "support_material_contact_distance_type", "none" },
+        { "support_material_interface_layers", 0 },
+        { "dont_support_bridges", 0 }
+    });
+
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const PrintObject *object = print.objects().front();
+    SpanOfConstPtrs<SupportLayer> support_layers = object->support_layers();
+    REQUIRE(support_layers.size() > 0);
+    REQUIRE(_equiv(support_layers.front()->print_z, object->layers().front()->print_z));
+
+    for (const SupportLayer *support_layer : support_layers) {
+        bool synchronized = false;
+        for (const Layer *object_layer : object->layers())
+            synchronized = synchronized || _equiv(support_layer->print_z, object_layer->print_z);
+        REQUIRE(synchronized);
+
+        FilledSupportRoleVisitor visitor;
+        support_layer->support_fills.visit(visitor);
+        REQUIRE(visitor.saw_entity);
+        REQUIRE(visitor.only_interface);
+    }
 }
 
 SCENARIO("SupportMaterial: support_layers_z and contact_distance", "[SupportMaterial]")
