@@ -7,6 +7,7 @@
 ///|/
 ///|/ PrusaSlicer is released under the terms of the AGPLv3 or higher
 ///|/
+#include <algorithm>
 #include <cstdio>
 #include <numeric>
 
@@ -33,6 +34,7 @@
 #include "FillLightning.hpp"
 #include "FillSmooth.hpp"
 #include "FillEnsuring.hpp"
+#include "FillWithPerimeter.hpp"
 
 #include <boost/log/trivial.hpp>
 
@@ -3844,137 +3846,4 @@ void Fill::connect_infill(Polylines&& infill_ordered, const ExPolygon& boundary,
         FakePerimeterConnect::connect_infill(std::move(infill_ordered), polygons_src, get_extents(boundary.contour), polylines_out, spacing, params);
     }
 }
-
-
-void FillWithPerimeter::fill_surface_extrusion(const Surface *surface,
-                                               const FillParams &params,
-                                               ExtrusionEntitiesPtr &out) const {
-    ExtrusionEntityCollection *eecroot = new ExtrusionEntityCollection();
-    // you don't want to sort the extrusions: big infill first, small second
-    eecroot->set_can_sort_reverse(true, true);
-
-    // set Fill params
-    *infill = *this;
-
-    // === extrude perimeter & associated surface at the same time, in the right order ===
-    // generate perimeter:
-    coord_t offset_for_overlap = scale_d(this->get_spacing() / 2) * ((1 - overlap_ratio) / 2);
-    ExPolygons path_perimeter = offset2_ex(ExPolygons{surface->expolygon},
-                                           scale_d(-this->get_spacing()) / 2 - offset_for_overlap, offset_for_overlap,
-                                           ClipperLib::jtMiter, scale_d(this->get_spacing()) * 10);
-    // fix a bug that can happens when (positive) offsetting with a big miter limit and two island merge. See
-    // https://github.com/supermerill/SuperSlicer/issues/609
-    path_perimeter = intersection_ex(path_perimeter, offset_ex(surface->expolygon, scale_d(-this->get_spacing() / 2)));
-    ensure_valid(path_perimeter);
-    for (ExPolygon &expolygon : path_perimeter) {
-        expolygon.assert_valid();
-
-        ExtrusionEntityCollection *eec_expoly = path_perimeter.size() == 1 ? eecroot :
-                                                                             new ExtrusionEntityCollection();
-        if (path_perimeter.size() > 1)
-            eecroot->append(ExtrusionEntitiesPtr{eec_expoly});
-        eec_expoly->set_can_sort_reverse(false, false);
-
-        // create perimeter
-        expolygon.contour.make_counter_clockwise();
-        Polylines polylines_peri = {expolygon.contour.split_at_index(0)};
-        for (Polygon hole : expolygon.holes) {
-            hole.make_clockwise();
-            polylines_peri.push_back(hole.split_at_index(0));
-        }
-        if (!polylines_peri.empty()) {
-            // Save into layer.
-            ExtrusionEntityCollection *eec_peri = new ExtrusionEntityCollection();
-            /// pass the no_sort attribute to the extrusion path
-            eec_peri->set_can_sort_reverse(!this->no_sort(), !this->no_sort());
-            /// add it into the collection
-            eec_expoly->append(ExtrusionEntitiesPtr{eec_peri});
-            // get the role
-            ExtrusionRole good_role = getRoleFromSurfaceType(params, surface);
-            /// push the path
-            extrusion_entities_append_paths(*eec_peri, std::move(polylines_peri),
-                                            ExtrusionAttributes{good_role,
-                                                                ExtrusionFlow{params.flow.mm3_per_mm(),
-                                                                              params.flow.width(),
-                                                                              params.flow.height()}},
-                                            !params.monotonic);
-
-            // === extrude infill ===
-            // 50% overlap with the new perimeter
-            ExPolygons path_inner = offset2_ex(ExPolygons{expolygon},
-                                               scale_d(-this->get_spacing() * (ratio_fill_inside + 0.5)),
-                                               scale_d(this->get_spacing() / 2));
-            ensure_valid(path_inner);
-            for (ExPolygon &expolygon : path_inner) {
-                expolygon.assert_valid();
-                Surface surfInner(*surface, expolygon);
-                Polylines polys_infill = infill->fill_surface(&surfInner, params);
-                if (!polys_infill.empty()) {
-                    // Save into layer.
-                    ExtrusionEntityCollection *eec_infill = new ExtrusionEntityCollection();
-                    /// pass the no_sort attribute to the extrusion path
-                    eec_infill->set_can_sort_reverse(!this->no_sort(), !this->no_sort());
-                    /// add it into the collection
-                    eec_expoly->append(ExtrusionEntitiesPtr{eec_infill});
-                    // get the role
-                    ExtrusionRole good_role = getRoleFromSurfaceType(params, surface);
-                    /// push the path
-                    extrusion_entities_append_paths(*eec_infill, std::move(polys_infill),
-                                                    ExtrusionAttributes{good_role,
-                                                                        ExtrusionFlow{params.flow.mm3_per_mm(),
-                                                                                      params.flow.width(),
-                                                                                      params.flow.height()}},
-                                                    !params.monotonic);
-#ifdef _DEBUGINFO
-                    eec_infill->visit(LoopAssertVisitor());
-#endif
-                }
-            }
-        }
-    }
-
-    // check volume coverage
-    if (!eecroot->empty()) {
-        double mult_flow = 1;
-        // check if not over-extruding
-        if (!params.dont_adjust && params.full_infill() && !params.flow.bridge() && params.fill_exactly) {
-            // compute the path of the nozzle -> extruded volume
-            double extruded_volume = ExtrusionVolume{}.get(*eecroot);
-            // compute flow to remove spacing_ratio from the equation
-            // compute real volume to fill
-            double polyline_volume = compute_unscaled_volume_to_fill(surface, params);
-            if (extruded_volume != 0 && polyline_volume != 0)
-                mult_flow = polyline_volume / extruded_volume;
-            // failsafe, it can happen
-            if (mult_flow > 1.3)
-                mult_flow = 1.3;
-            if (mult_flow < 0.8)
-                mult_flow = 0.8;
-            BOOST_LOG_TRIVIAL(info) << "rectilinear/monotonic Infill (with gapfil) process extrude "
-                                    << extruded_volume << " mm3 for a volume of " << polyline_volume
-                                    << " mm3 : we mult the flow by " << mult_flow;
-#if _DEBUG
-            this->debug_verify_flow_mult = mult_flow;
-#endif
-        }
-        mult_flow *= params.flow_mult;
-        if (mult_flow != 1) {
-            // apply to extrusions
-            ExtrusionModifyFlow{mult_flow}.set(*eecroot);
-        }
-    } else {
-#if _DEBUG
-        this->debug_verify_flow_mult = -1;
-#endif
-    }
-
-    // === end ===
-    if (!eecroot->empty()) {
-        out.push_back(eecroot);
-    } else {
-        delete eecroot;
-    }
-}
-
-
 } // namespace Slic3r

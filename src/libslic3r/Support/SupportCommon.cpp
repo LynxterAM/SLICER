@@ -8,6 +8,7 @@
 #include "../Layer.hpp"
 #include "../Print.hpp"
 #include "../Fill/FillBase.hpp"
+#include "../Fill/FillWithPerimeter.hpp"
 #include "../MutablePolygon.hpp"
 #include "../Geometry.hpp"
 #include "../Point.hpp"

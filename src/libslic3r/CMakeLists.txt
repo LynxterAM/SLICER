@@ -125,6 +125,8 @@ set(SLIC3R_SOURCES
     Fill/FillRectilinear.hpp
     Fill/FillSmooth.cpp
     Fill/FillSmooth.hpp
+    Fill/FillWithPerimeter.cpp
+    Fill/FillWithPerimeter.hpp
     Flow.cpp
     Flow.hpp
     format.hpp

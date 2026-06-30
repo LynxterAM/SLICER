@@ -4,6 +4,7 @@
 #include <catch_main.hpp>
 #include "test_data.hpp"
 #include <libslic3r/Fill/Fill.hpp>
+#include <libslic3r/Fill/FillWithPerimeter.hpp>
 #include <libslic3r/Print.hpp>
 #include <libslic3r/ExtrusionEntity.hpp>
 #include <libslic3r/Layer.hpp>
@@ -31,6 +32,271 @@ bool test_if_solid_surface_filled(const ExPolygon& expolygon, double flow_spacin
 Polylines test(const ExPolygon& poly, Fill &filler, const FillParams &params){
 	Surface surface{ Slic3r::Surface((stPosTop | stDensSolid), poly) };
 	return filler.fill_surface(&surface, params);
+}
+
+namespace {
+
+// FillWithPerimeter emits closed extrusion loops for its contours and open paths for rectilinear infill.
+struct FillWithPerimeterStats : public ExtrusionVisitorRecursiveConst
+{
+    using ExtrusionVisitorRecursiveConst::use;
+
+    size_t loop_count = 0;
+    size_t open_path_count = 0;
+    double open_path_length = 0.;
+
+    void use(const ExtrusionLoop &) override
+    {
+        ++loop_count;
+    }
+
+    void use(const ExtrusionPath &path) override
+    {
+        ++open_path_count;
+        open_path_length += path.length();
+    }
+};
+
+class FillWithPerimeterRecordingFill : public Fill
+{
+public:
+    mutable bool fill_surface_called = false;
+    mutable bool fill_surface_extrusion_called = false;
+    mutable bool add_gap_fill_forwarded = false;
+    mutable bool no_overlap_expolygons_prepared = false;
+
+    Fill *clone() const override { return new FillWithPerimeterRecordingFill(*this); }
+
+    Polylines fill_surface(const Surface *, const FillParams &) const override
+    {
+        fill_surface_called = true;
+        return {};
+    }
+
+    void fill_surface_extrusion(const Surface *, const FillParams &params, ExtrusionEntitiesPtr &) const override
+    {
+        fill_surface_extrusion_called = true;
+        add_gap_fill_forwarded = params.add_gap_fill;
+        no_overlap_expolygons_prepared = !no_overlap_expolygons.empty();
+    }
+};
+
+ExPolygon make_fill_with_perimeter_square()
+{
+    Points points{
+        Point::new_scale(0, 0),
+        Point::new_scale(80, 0),
+        Point::new_scale(80, 80),
+        Point::new_scale(0, 80)
+    };
+
+    ExPolygon expolygon;
+    expolygon.contour = Polygon(points);
+    return expolygon;
+}
+
+ExPolygon make_fill_with_perimeter_dumbbell()
+{
+    Points points{
+        Point::new_scale(0, 0),
+        Point::new_scale(20, 0),
+        Point::new_scale(20, 9.9),
+        Point::new_scale(30, 9.9),
+        Point::new_scale(30, 0),
+        Point::new_scale(50, 0),
+        Point::new_scale(50, 20),
+        Point::new_scale(30, 20),
+        Point::new_scale(30, 10.1),
+        Point::new_scale(20, 10.1),
+        Point::new_scale(20, 20),
+        Point::new_scale(0, 20)
+    };
+
+    ExPolygon expolygon;
+    expolygon.contour = Polygon(points);
+    return expolygon;
+}
+
+ExtrusionEntityCollection collect_fill_with_perimeter_collection(
+    FillWithPerimeter &filler,
+    const ExPolygon   &expolygon,
+    bool               add_gap_fill = false)
+{
+    Surface surface((stPosTop | stDensSolid), expolygon);
+    FullPrintConfig config = FullPrintConfig::defaults();
+    FillParams params;
+    params.config = &config;
+    params.dont_adjust = true;
+    params.density = 1.f;
+    params.flow = Flow::new_from_width(0.45f, 0.2f, 0.4f, 1.f, false);
+    params.role = ExtrusionRole::InternalInfill;
+    params.add_gap_fill = add_gap_fill;
+
+    filler.set_bounding_box(expolygon.contour.bounding_box());
+    filler.angle = 0.f;
+    filler.init_spacing(params.flow.spacing(), params);
+
+    ExtrusionEntityCollection collection;
+    filler.fill_surface_extrusion(&surface, params, collection.set_entities());
+    return collection;
+}
+
+FillWithPerimeterStats collect_fill_with_perimeter_stats(const ExtrusionEntity &entity)
+{
+    FillWithPerimeterStats stats;
+    entity.visit(stats);
+    return stats;
+}
+
+FillWithPerimeterStats collect_fill_with_perimeter_stats(FillWithPerimeter &filler)
+{
+    ExtrusionEntityCollection collection = collect_fill_with_perimeter_collection(filler, make_fill_with_perimeter_square());
+    FillWithPerimeterStats stats = collect_fill_with_perimeter_stats(collection);
+    return stats;
+}
+
+const ExtrusionEntityCollection *find_sortable_multi_island_collection(const ExtrusionEntityCollection &collection)
+{
+    if (collection.can_sort() && collection.entities().size() > 1)
+        return &collection;
+
+    for (const ExtrusionEntity *entity : collection.entities()) {
+        const ExtrusionEntityCollection *child = dynamic_cast<const ExtrusionEntityCollection *>(entity);
+        if (child == nullptr)
+            continue;
+
+        const ExtrusionEntityCollection *match = find_sortable_multi_island_collection(*child);
+        if (match != nullptr)
+            return match;
+    }
+
+    return nullptr;
+}
+
+void require_branch_has_perimeters_before_infill(const ExtrusionEntityCollection &branch)
+{
+    REQUIRE(!branch.can_sort());
+    REQUIRE(branch.entities().size() >= 2);
+
+    for (size_t entity_idx = 0; entity_idx < branch.entities().size(); ++entity_idx) {
+        FillWithPerimeterStats stats = collect_fill_with_perimeter_stats(*branch.entities()[entity_idx]);
+        if (entity_idx + 1 == branch.entities().size()) {
+            REQUIRE(stats.loop_count == 0);
+            REQUIRE(stats.open_path_count > 0);
+        } else {
+            REQUIRE(stats.loop_count > 0);
+            REQUIRE(stats.open_path_count == 0);
+        }
+    }
+}
+
+}
+
+TEST_CASE("FillWithPerimeter: configurable perimeter count", "[Fill]")
+{
+    SECTION("default factory keeps one perimeter") {
+        std::unique_ptr<Fill> filler_base(Fill::new_from_type("rectiwithperimeter"));
+        FillWithPerimeter *filler = dynamic_cast<FillWithPerimeter *>(filler_base.get());
+
+        REQUIRE(filler != nullptr);
+        REQUIRE(filler->perimeter_count == 1);
+
+        FillWithPerimeterStats stats = collect_fill_with_perimeter_stats(*filler);
+        REQUIRE(stats.loop_count == 1);
+        REQUIRE(stats.open_path_count > 0);
+    }
+
+    SECTION("zero perimeter delegates to the wrapped fill") {
+        FillWithPerimeter filler(Fill::new_from_type(ipRectilinear), 0);
+        FillWithPerimeterStats stats = collect_fill_with_perimeter_stats(filler);
+
+        REQUIRE(stats.loop_count == 0);
+        REQUIRE(stats.open_path_count > 0);
+    }
+
+    SECTION("add_gap_fill is forwarded to the wrapped extrusion path") {
+        FillWithPerimeterRecordingFill *recording_fill = new FillWithPerimeterRecordingFill();
+        FillWithPerimeter filler(recording_fill, 1);
+        collect_fill_with_perimeter_collection(filler, make_fill_with_perimeter_square(), true);
+
+        REQUIRE(recording_fill->fill_surface_extrusion_called);
+        REQUIRE(!recording_fill->fill_surface_called);
+        REQUIRE(recording_fill->add_gap_fill_forwarded);
+        REQUIRE(recording_fill->no_overlap_expolygons_prepared);
+    }
+
+    SECTION("multiple perimeters keep an inner fill") {
+        FillWithPerimeter filler(Fill::new_from_type(ipRectilinear), 3);
+        FillWithPerimeterStats stats = collect_fill_with_perimeter_stats(filler);
+
+        REQUIRE(stats.loop_count == 3);
+        REQUIRE(stats.open_path_count > 0);
+    }
+
+    SECTION("clone preserves perimeter settings") {
+        FillWithPerimeter filler(Fill::new_from_type(ipRectilinear), 2);
+        filler.external_perimeter_encroachment = 0.25f;
+        filler.ratio_fill_inside = 0.2f;
+        filler.perimeter_infill_encroachment = 0.1f;
+
+        std::unique_ptr<Fill> cloned_base(filler.clone());
+        FillWithPerimeter *cloned = dynamic_cast<FillWithPerimeter *>(cloned_base.get());
+
+        REQUIRE(cloned != nullptr);
+        REQUIRE(cloned->perimeter_count == 2);
+        REQUIRE(cloned->external_perimeter_encroachment == Approx(0.25f));
+        REQUIRE(cloned->ratio_fill_inside == Approx(0.2f));
+        REQUIRE(cloned->perimeter_infill_encroachment == Approx(0.1f));
+        REQUIRE(cloned->infill != nullptr);
+    }
+
+    SECTION("default perimeter to infill encroachment matches explicit half spacing") {
+        FillWithPerimeter default_filler(Fill::new_from_type(ipRectilinear), 1);
+        FillWithPerimeter explicit_filler(Fill::new_from_type(ipRectilinear), 1);
+        explicit_filler.perimeter_infill_encroachment = 0.5f;
+
+        FillWithPerimeterStats default_stats = collect_fill_with_perimeter_stats(default_filler);
+        FillWithPerimeterStats explicit_stats = collect_fill_with_perimeter_stats(explicit_filler);
+
+        REQUIRE(default_filler.perimeter_infill_encroachment == Approx(0.5f));
+        REQUIRE(default_stats.loop_count == explicit_stats.loop_count);
+        REQUIRE(default_stats.open_path_count == explicit_stats.open_path_count);
+        REQUIRE(default_stats.open_path_length == Approx(explicit_stats.open_path_length));
+    }
+
+    SECTION("zero perimeter to infill encroachment moves only the inner fill") {
+        FillWithPerimeter default_filler(Fill::new_from_type(ipRectilinear), 1);
+        FillWithPerimeter no_encroachment_filler(Fill::new_from_type(ipRectilinear), 1);
+        no_encroachment_filler.perimeter_infill_encroachment = 0.f;
+
+        FillWithPerimeterStats default_stats = collect_fill_with_perimeter_stats(default_filler);
+        FillWithPerimeterStats no_encroachment_stats = collect_fill_with_perimeter_stats(no_encroachment_filler);
+
+        REQUIRE(default_stats.loop_count == no_encroachment_stats.loop_count);
+        REQUIRE(default_stats.open_path_count > 0);
+        REQUIRE(no_encroachment_stats.open_path_count > 0);
+        REQUIRE(no_encroachment_stats.open_path_length < default_stats.open_path_length);
+    }
+
+    SECTION("split islands keep depth-first perimeters before infill") {
+        FillWithPerimeter filler(Fill::new_from_type(ipRectilinear), 2);
+        ExtrusionEntityCollection collection = collect_fill_with_perimeter_collection(filler, make_fill_with_perimeter_dumbbell());
+
+        REQUIRE(collection.entities().size() == 1);
+        const ExtrusionEntityCollection *root = dynamic_cast<const ExtrusionEntityCollection *>(collection.entities().front());
+        REQUIRE(root != nullptr);
+        const ExtrusionEntityCollection *islands = find_sortable_multi_island_collection(*root);
+
+        REQUIRE(islands != nullptr);
+        REQUIRE(islands->can_sort());
+        REQUIRE(islands->entities().size() == 2);
+
+        for (const ExtrusionEntity *branch_entity : islands->entities()) {
+            const ExtrusionEntityCollection *branch = dynamic_cast<const ExtrusionEntityCollection *>(branch_entity);
+            REQUIRE(branch != nullptr);
+            require_branch_has_perimeters_before_infill(*branch);
+        }
+    }
 }
 
 TEST_CASE("Fill: Pattern Path Length") {
