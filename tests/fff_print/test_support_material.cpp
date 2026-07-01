@@ -4,10 +4,14 @@
 #include "libslic3r/ExtrusionEntity.hpp"
 #include "libslic3r/GCodeReader.hpp"
 #include "libslic3r/Layer.hpp"
+#include "libslic3r/Model.hpp"
 #include "libslic3r/PrintConfig.hpp"
 #include "libslic3r/Support/SupportParameters.hpp"
+#include "libslic3r/TriangleMesh.hpp"
 
 #include "test_data.hpp" // get access to init_print, etc
+
+#include <utility>
 
 using namespace Slic3r::Test;
 using namespace Slic3r;
@@ -104,6 +108,60 @@ DynamicPrintConfig support_interface_gap_fill_config(double interface_spacing)
     return config;
 }
 
+DynamicPrintConfig support_column_config(const char *support_style)
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", support_style },
+        { "support_material_auto", 0 },
+        { "support_material_enforce_layers", 0 },
+        { "support_material_contact_distance_type", "none" },
+        { "support_material_interface_layers", 0 },
+        { "support_material_top_interface_pattern", "rectilinear" },
+        { "support_material_buildplate_only", 0 },
+        { "dont_support_bridges", 0 }
+    });
+    return config;
+}
+
+TriangleMesh stepped_support_column_mesh()
+{
+    // The lower section is intentionally much wider than the upper section.
+    // A top-only support column seed must therefore project the small top face,
+    // not the larger lower cross-section.
+    TriangleMesh lower = make_cube(12., 12., 4.);
+    TriangleMesh upper = make_cube(4., 4., 4.);
+    upper.translate(Vec3f(4.f, 4.f, 4.2f));
+    lower.merge(upper);
+    return lower;
+}
+
+ModelVolume *add_support_modifier(Model &model, TriangleMesh &&mesh, ModelVolumeType type, const Vec3d &offset)
+{
+    REQUIRE(!model.objects.empty());
+    ModelObject *object = model.objects.front();
+    ModelVolume *volume = object->add_volume(std::move(mesh), type);
+    volume->set_offset(offset);
+    return volume;
+}
+
+void process_support_column_model(Print &print, Model &model, const DynamicPrintConfig &config)
+{
+    print.apply(model, config);
+    std::pair<PrintBase::PrintValidationError, std::string> validation = print.validate();
+    REQUIRE(validation.first == PrintBase::PrintValidationError::pveNone);
+    print.process();
+}
+
+SupportInterfaceStats collect_support_interface_stats(const PrintObject &object)
+{
+    SupportInterfaceStats stats;
+    for (const SupportLayer *support_layer : object.support_layers())
+        support_layer->support_fills.visit(stats);
+    return stats;
+}
+
 SupportInterfaceStats collect_support_interface_stats(const DynamicPrintConfig &config)
 {
     Print print;
@@ -118,17 +176,25 @@ SupportInterfaceStats collect_support_interface_stats(const DynamicPrintConfig &
     return stats;
 }
 
+double total_unscaled_area(const ExPolygons &expolygons)
+{
+    return unscaled(unscaled(area(expolygons)));
+}
+
+double max_support_island_area(const PrintObject &object)
+{
+    double max_area = 0.;
+    for (const SupportLayer *support_layer : object.support_layers())
+        max_area = std::max(max_area, total_unscaled_area(support_layer->support_islands));
+    return max_area;
+}
+
 bool collect_classic_support_interface_gap_fill_flag(double interface_spacing)
 {
     Print print;
     init_and_process_print({ TestMesh::overhang }, print, support_interface_gap_fill_config(interface_spacing));
     FFFSupport::SupportParameters support_params(*print.objects().front());
     return support_params.interface_gap_fill;
-}
-
-double total_unscaled_area(const ExPolygons &expolygons)
-{
-    return unscaled(unscaled(area(expolygons)));
 }
 
 }
@@ -216,6 +282,63 @@ TEST_CASE("SupportMaterial: filled style generates synchronized interface-only l
         REQUIRE(visitor.saw_entity);
         REQUIRE(visitor.only_interface);
     }
+}
+
+TEST_CASE("SupportMaterial: filled style uses support column in empty space", "[SupportMaterial][FilledSupport][SupportColumn]")
+{
+    DynamicPrintConfig config = support_column_config("filled");
+    Print print;
+    Model model;
+    init_print({ TestMesh::cube_20x20x20 }, print, model, config);
+    add_support_modifier(model, make_cube(8., 8., 8.), ModelVolumeType::SUPPORT_COLUMN, Vec3d(35., 0., 6.));
+    process_support_column_model(print, model, config);
+
+    const PrintObject &object = *print.objects().front();
+    REQUIRE(object.support_layers().size() > 0);
+    SupportInterfaceStats stats = collect_support_interface_stats(object);
+    REQUIRE(stats.saw_entity);
+    REQUIRE(stats.only_interface);
+}
+
+TEST_CASE("SupportMaterial: classic support ignores support column", "[SupportMaterial][SupportColumn]")
+{
+    DynamicPrintConfig config = support_column_config("grid");
+    Print print;
+    Model model;
+    init_print({ TestMesh::cube_20x20x20 }, print, model, config);
+    add_support_modifier(model, make_cube(8., 8., 8.), ModelVolumeType::SUPPORT_COLUMN, Vec3d(35., 0., 6.));
+    process_support_column_model(print, model, config);
+
+    const PrintObject &object = *print.objects().front();
+    REQUIRE(object.support_layers().size() == 0);
+}
+
+TEST_CASE("SupportMaterial: support blocker removes filled support column projection", "[SupportMaterial][FilledSupport][SupportColumn]")
+{
+    DynamicPrintConfig config = support_column_config("filled");
+    Print print;
+    Model model;
+    init_print({ TestMesh::cube_20x20x20 }, print, model, config);
+    add_support_modifier(model, make_cube(8., 8., 8.), ModelVolumeType::SUPPORT_COLUMN, Vec3d(35., 0., 6.));
+    add_support_modifier(model, make_cube(12., 12., 20.), ModelVolumeType::SUPPORT_BLOCKER, Vec3d(35., 0., 6.));
+    process_support_column_model(print, model, config);
+
+    const PrintObject &object = *print.objects().front();
+    REQUIRE(object.support_layers().size() == 0);
+}
+
+TEST_CASE("SupportMaterial: filled support column uses only topmost slice as seed", "[SupportMaterial][FilledSupport][SupportColumn]")
+{
+    DynamicPrintConfig config = support_column_config("filled");
+    Print print;
+    Model model;
+    init_print({ TestMesh::cube_20x20x20 }, print, model, config);
+    add_support_modifier(model, stepped_support_column_mesh(), ModelVolumeType::SUPPORT_COLUMN, Vec3d(35., 0., 6.));
+    process_support_column_model(print, model, config);
+
+    const PrintObject &object = *print.objects().front();
+    REQUIRE(object.support_layers().size() > 0);
+    REQUIRE(max_support_island_area(object) < 40.);
 }
 
 TEST_CASE("SupportMaterial: interface perimeter count", "[SupportMaterial]")

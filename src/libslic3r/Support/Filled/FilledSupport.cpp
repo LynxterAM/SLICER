@@ -37,6 +37,7 @@ struct FilledSupportAnnotations
 {
     std::vector<Polygons> enforcers_layers;
     std::vector<Polygons> blockers_layers;
+    std::vector<Polygons> support_columns_layers;
 };
 
 // Rejects settings that would require legacy base/contact/raft behavior.
@@ -114,6 +115,7 @@ FilledSupportAnnotations collect_annotations(const PrintObject &object)
     FilledSupportAnnotations annotations;
     annotations.enforcers_layers.assign(layer_count, Polygons());
     annotations.blockers_layers.assign(layer_count, Polygons());
+    annotations.support_columns_layers.assign(layer_count, Polygons());
 
     std::vector<ExPolygons> enforcers = object.slice_support_enforcers();
     std::vector<Polygons> custom_enforcers = object.project_and_append_custom_facets(false, EnforcerBlockerType::ENFORCER);
@@ -134,6 +136,14 @@ FilledSupportAnnotations collect_annotations(const PrintObject &object)
         if (layer_id < custom_blockers.size())
             polygons_append(annotations.blockers_layers[layer_id], std::move(custom_blockers[layer_id]));
     }
+
+    // Support columns are artificial top seeds: unlike enforcers, they are not
+    // clipped to object material on the same layer, because they intentionally
+    // create support in empty XY space.
+    std::vector<ExPolygons> support_columns = object.slice_support_column_tops();
+    const size_t support_column_layer_count = std::min(layer_count, support_columns.size());
+    for (size_t layer_id = 0; layer_id < support_column_layer_count; ++layer_id)
+        polygons_append(annotations.support_columns_layers[layer_id], to_polygons(support_columns[layer_id]));
 
     return annotations;
 }
@@ -230,6 +240,12 @@ Polygons detect_layer_support_seeds(
         Polygons enforced = intersection(layer.lslices(), annotations.enforcers_layers[layer_id]);
         ensure_valid(enforced, resolution);
         polygons_append(seeds, std::move(enforced));
+    }
+
+    if (!annotations.support_columns_layers[layer_id].empty()) {
+        Polygons support_columns = annotations.support_columns_layers[layer_id];
+        ensure_valid(support_columns, resolution);
+        polygons_append(seeds, std::move(support_columns));
     }
 
     if (!annotations.blockers_layers[layer_id].empty() && !seeds.empty()) {

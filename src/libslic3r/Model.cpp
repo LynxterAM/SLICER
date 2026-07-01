@@ -913,18 +913,41 @@ bool ModelObject::is_text() const
     return this->volumes.size() == 1 && this->volumes[0]->is_text();
 }
 
+static int model_volume_sort_rank(const ModelVolumeType volume_type)
+{
+    // Archive compatibility requires appending new enum values only.  The sort
+    // rank keeps the UI/model order independent from the serialized numeric
+    // value, so support columns still live next to the other support modifiers.
+    switch (volume_type) {
+    case ModelVolumeType::MODEL_PART:                  return 0;
+    case ModelVolumeType::NEGATIVE_VOLUME:             return 1;
+    case ModelVolumeType::PARAMETER_MODIFIER:          return 2;
+    case ModelVolumeType::SUPPORT_BLOCKER:             return 3;
+    case ModelVolumeType::SUPPORT_ENFORCER:            return 4;
+    case ModelVolumeType::SUPPORT_COLUMN:              return 5;
+    case ModelVolumeType::SEAM_POSITION_CENTER:        return 6;
+    case ModelVolumeType::SEAM_POSITION_CENTER_Z:      return 7;
+    case ModelVolumeType::SEAM_POSITION_INSIDE_CENTER: return 8;
+    case ModelVolumeType::SEAM_POSITION_INSIDE:        return 9;
+    case ModelVolumeType::BRIM_PATCH:                  return 10;
+    case ModelVolumeType::BRIM_NEGATIVE:               return 11;
+    default:                                           return 100;
+    }
+}
+
 void ModelObject::sort_volumes(bool full_sort)
 {
     // sort volumes inside the object to order "Model Part, Negative Volume, Modifier, Support Blocker and Support Enforcer. "
     if (full_sort)
         std::stable_sort(volumes.begin(), volumes.end(), [](ModelVolume* vl, ModelVolume* vr) {
-            return vl->type() < vr->type();
+            return model_volume_sort_rank(vl->type()) < model_volume_sort_rank(vr->type());
         });
     // sort have to controll "place" of the support blockers/enforcers. But one of the model parts have to be on the first place.
     else
         std::stable_sort(volumes.begin(), volumes.end(), [](ModelVolume* vl, ModelVolume* vr) {
-            ModelVolumeType vl_type = vl->type() > ModelVolumeType::PARAMETER_MODIFIER ? vl->type() : ModelVolumeType::PARAMETER_MODIFIER;
-            ModelVolumeType vr_type = vr->type() > ModelVolumeType::PARAMETER_MODIFIER ? vr->type() : ModelVolumeType::PARAMETER_MODIFIER;
+            const int modifier_rank = model_volume_sort_rank(ModelVolumeType::PARAMETER_MODIFIER);
+            const int vl_type = std::max(model_volume_sort_rank(vl->type()), modifier_rank);
+            const int vr_type = std::max(model_volume_sort_rank(vr->type()), modifier_rank);
             return vl_type < vr_type;
         });
 }
@@ -1901,6 +1924,8 @@ ModelVolumeType ModelVolume::type_from_string(const std::string &s)
 		return ModelVolumeType::SUPPORT_ENFORCER;
     if (s == "SupportBlocker")
 		return ModelVolumeType::SUPPORT_BLOCKER;
+    if (s == "SupportColumn")
+        return ModelVolumeType::SUPPORT_COLUMN;
     if (s == "SeamPosition")
         return ModelVolumeType::SEAM_POSITION_CENTER;
     if (s == "SeamPositionCenter")
@@ -1928,6 +1953,7 @@ std::string ModelVolume::type_to_string(const ModelVolumeType t)
 	case ModelVolumeType::PARAMETER_MODIFIER: return "ParameterModifier";
 	case ModelVolumeType::SUPPORT_ENFORCER:   return "SupportEnforcer";
 	case ModelVolumeType::SUPPORT_BLOCKER:    return "SupportBlocker";
+    case ModelVolumeType::SUPPORT_COLUMN:     return "SupportColumn";
     case ModelVolumeType::SEAM_POSITION_CENTER:         return "SeamPositionCenter";
     case ModelVolumeType::SEAM_POSITION_CENTER_Z:       return "SeamPositionCenterZ";
     case ModelVolumeType::SEAM_POSITION_INSIDE_CENTER:  return "SeamPositionInsideCenter";

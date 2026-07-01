@@ -964,15 +964,19 @@ std::pair<PrintBase::PrintValidationError, std::string> Print::validate(std::vec
 
             // Do we have custom support data that would not be used?
             // Notify the user in that case.
-            if (! object->has_support() && warnings) {
+            bool has_support_column = false;
+            if (warnings) {
                 for (const ModelVolume* mv : object->model_object()->volumes) {
-                    bool has_enforcers = mv->is_support_enforcer() ||
+                    has_support_column = has_support_column || mv->is_support_column();
+                    bool has_enforcers = mv->is_support_enforcer() || mv->is_support_column() ||
                         (mv->is_model_part() && mv->supported_facets.has_facets(*mv, EnforcerBlockerType::ENFORCER));
-                    if (has_enforcers) {
+                    if (!object->has_support() && has_enforcers) {
                         warnings->emplace_back("_SUPPORTS_OFF");
                         break;
                     }
                 }
+                if (object->has_support() && has_support_column && object->config().support_material_style.value != smsFilled)
+                    warnings->emplace_back("_SUPPORT_COLUMNS_ONLY_FILLED");
             }
             
             const double object_first_layer_height = get_object_first_layer_height(*object);

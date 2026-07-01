@@ -178,7 +178,7 @@ wxBitmapBundle* SettingsFactory::get_category_bitmap(const Slic3r::OptionCategor
 //-------------------------------------
 
 // Note: id accords to type of the sub-object (adding volume), so sequence of the menu items is important
-static const constexpr std::array<std::pair<const char *, const char *>, 11> ADD_VOLUME_MENU_ITEMS = {{
+static const constexpr std::array<std::pair<const char *, const char *>, 12> ADD_VOLUME_MENU_ITEMS = {{
     //       menu_item Name              menu_item bitmap name
     {L("Add part"),              "add_part" },           // ~ModelVolumeType::MODEL_PART
     {L("Add negative volume"),   "add_negative" },       // ~ModelVolumeType::NEGATIVE_VOLUME
@@ -191,6 +191,7 @@ static const constexpr std::array<std::pair<const char *, const char *>, 11> ADD
     {L("Enforce seam position"),     "add_seam"},            // ~ModelVolumeType::SEAM_POSITION_INSIDE
     {L("Add brim patch"),        "add_brim_patch"},      // ~ModelVolumeType::BRIM_PATCH
     {L("Add brim negative"),     "add_brim_negative"},   // ~ModelVolumeType::BRIM_NEGATIVE
+    {L("Add support column"),    "support_enforcer"},    // ~ModelVolumeType::SUPPORT_COLUMN
 }};
 
 // Note: id accords to type of the sub-object (adding volume), so sequence of the menu items is important
@@ -577,7 +578,8 @@ void MenuFactory::append_submenu_add_generic(wxMenu* menu_parent, wxMenu* sub_me
     //assert(type != ModelVolumeType::SEAM_POSITION_INSIDE);
     const ConfigOptionMode mode = wxGetApp().get_mode();
 
-    if (type != ModelVolumeType::INVALID && type != ModelVolumeType::SEAM_POSITION_INSIDE && (mode > comSimple || get_app_config()->get_bool("objects_always_expert"))) {
+    if (type != ModelVolumeType::INVALID && type != ModelVolumeType::SEAM_POSITION_INSIDE &&
+        type != ModelVolumeType::SUPPORT_COLUMN && (mode > comSimple || get_app_config()->get_bool("objects_always_expert"))) {
         append_menu_item(sub_menu, wxID_ANY, _L("Load") + " " + dots, "",
             [type](wxCommandEvent&) { obj_list()->load_subobject(type); }, "", menu_parent);
         sub_menu->AppendSeparator();
@@ -586,6 +588,7 @@ void MenuFactory::append_submenu_add_generic(wxMenu* menu_parent, wxMenu* sub_me
     std::vector<std::string> items = { L("Box"), L("Cylinder"), L("Sphere"), L("Slab") };
     if (type == ModelVolumeType::BRIM_PATCH) items = {"Square", "Circle" };
     if (type == ModelVolumeType::BRIM_NEGATIVE) items = {"Square", "Circle" };
+    if (type == ModelVolumeType::SUPPORT_COLUMN) items = { L("Box") };
     for (auto& item : items)
     {
         if (type == ModelVolumeType::INVALID && strncmp(item.c_str(), "Slab", 4) == 0)
@@ -601,7 +604,8 @@ void MenuFactory::append_submenu_add_generic(wxMenu* menu_parent, wxMenu* sub_me
         append_menu_item_add_svg(sub_menu, type);
     }
 
-    if (type != ModelVolumeType::SEAM_POSITION_INSIDE && (mode >= comAdvanced || get_app_config()->get_bool("objects_always_expert"))) {
+    if (type != ModelVolumeType::SEAM_POSITION_INSIDE && type != ModelVolumeType::SUPPORT_COLUMN &&
+        (mode >= comAdvanced || get_app_config()->get_bool("objects_always_expert"))) {
         sub_menu->AppendSeparator();
         append_menu_item(sub_menu, wxID_ANY, _L("Gallery"), "",
             [type](wxCommandEvent&) { obj_list()->load_subobject(type, true); }, "", menu_parent);
@@ -680,10 +684,10 @@ void MenuFactory::append_menu_items_add_volume(MenuType menu_type)
     }
 
     //also destroy combined menus & the ones taht aren't in ADD_VOLUME_MENU_ITEMS
-    wxString combined_support_str = _L("Add support blocker/enforcer");
+    wxString combined_support_str = menu_type == mtObjectFFF ? _L("Add support blocker/enforcer/column") : _L("Add support blocker/enforcer");
     wxString combined_brim_str = _L("Add Brim patch/blocker");
     wxString combined_seam_str  =_L("Add seam position");
-    for (const wxString &item_name : {combined_support_str, combined_brim_str, combined_seam_str}) {
+    for (const wxString &item_name : {_L("Add support blocker/enforcer"), _L("Add support blocker/enforcer/column"), combined_brim_str, combined_seam_str}) {
         int item_id = menu->FindItem(item_name);
         if (item_id != wxNOT_FOUND)
             menu->Destroy(item_id);
@@ -701,6 +705,11 @@ void MenuFactory::append_menu_items_add_volume(MenuType menu_type)
             [](wxCommandEvent&) { obj_list()->load_generic_subobject(L("Box"), ModelVolumeType::SUPPORT_BLOCKER); },
             ADD_VOLUME_MENU_ITEMS[int(ModelVolumeType::SUPPORT_BLOCKER)].second, nullptr,
             []() { return obj_list()->is_instance_or_object_selected(); }, m_parent);
+        if (menu_type == mtObjectFFF)
+            append_menu_item(menu, wxID_ANY, _(ADD_VOLUME_MENU_ITEMS[int(ModelVolumeType::SUPPORT_COLUMN)].first), "",
+                [](wxCommandEvent&) { obj_list()->load_generic_subobject(L("Box"), ModelVolumeType::SUPPORT_COLUMN); },
+                ADD_VOLUME_MENU_ITEMS[int(ModelVolumeType::SUPPORT_COLUMN)].second, nullptr,
+                []() { return obj_list()->is_instance_or_object_selected(); }, m_parent);
         append_menu_item(menu, wxID_ANY, _(ADD_VOLUME_MENU_ITEMS[int(ModelVolumeType::SEAM_POSITION_CENTER)].first), "",
             [this](wxCommandEvent&) { obj_list()->load_generic_subobject(L("Sphere"), ModelVolumeType::SEAM_POSITION_CENTER); },
             ADD_VOLUME_MENU_ITEMS[int(ModelVolumeType::SEAM_POSITION_CENTER)].second, nullptr,
@@ -752,6 +761,12 @@ void MenuFactory::append_menu_items_add_volume(MenuType menu_type)
         wxMenu* sub_menu_enforce = new wxMenu;
         append_submenu_add_generic(sub_menu_both, sub_menu_enforce, ModelVolumeType::SUPPORT_ENFORCER);
         append_submenu(sub_menu_both, sub_menu_enforce, wxID_ANY, _L("Enforcer"), "", item_enforce.second, selected_func, m_parent);
+        if (menu_type == mtObjectFFF) {
+            const std::pair<const char *, const char *> &item_column = ADD_VOLUME_MENU_ITEMS[int(ModelVolumeType::SUPPORT_COLUMN)];
+            append_menu_item(sub_menu_both, wxID_ANY, _(item_column.first), "",
+                [this](wxCommandEvent&) { obj_list()->load_generic_subobject(L("Box"), ModelVolumeType::SUPPORT_COLUMN); },
+                item_column.second, nullptr, selected_func, m_parent);
+        }
         append_submenu(menu, sub_menu_both, wxID_ANY, combined_support_str, "", item_enforce.second, selected_func, m_parent);
     }
     if (menu_type != mtObjectSLA) {

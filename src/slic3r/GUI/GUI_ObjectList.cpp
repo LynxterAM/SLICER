@@ -1758,6 +1758,7 @@ void ObjectList::load_generic_subobject(const std::string& type_name, const Mode
     if (new_volume->is_brim())          base_name = "Brim";
     if (type == ModelVolumeType::SUPPORT_ENFORCER) base_name = "Support";
     if (type == ModelVolumeType::SUPPORT_BLOCKER) base_name = "Blocker";
+    if (type == ModelVolumeType::SUPPORT_COLUMN) base_name = "Support Column";
     const wxString name = _L(base_name) + "-" + (boost::starts_with(type_name, "Small") ? _(type_name.substr(5)): _(type_name));
     new_volume->name = into_u8(name);
     // set a default extruder value, since user can't add it manually
@@ -2914,7 +2915,8 @@ wxDataViewItem ObjectList::add_settings_item(wxDataViewItem parent_item, const D
     const bool is_object_settings = m_objects_model->GetItemType(parent_item) == itObject;
     if (!is_object_settings) {
         ModelVolumeType volume_type = m_objects_model->GetVolumeType(parent_item);
-        if (volume_type == ModelVolumeType::NEGATIVE_VOLUME || volume_type == ModelVolumeType::SUPPORT_BLOCKER || volume_type == ModelVolumeType::SUPPORT_ENFORCER)
+        if (volume_type == ModelVolumeType::NEGATIVE_VOLUME || volume_type == ModelVolumeType::SUPPORT_BLOCKER ||
+            volume_type == ModelVolumeType::SUPPORT_ENFORCER || volume_type == ModelVolumeType::SUPPORT_COLUMN)
             return ret;
     }
 
@@ -4367,6 +4369,10 @@ void ObjectList::change_part_type()
             names.Add(name);
         for (const ModelVolumeType  type_id : { ModelVolumeType::SUPPORT_BLOCKER, ModelVolumeType::SUPPORT_ENFORCER })
             types.emplace_back(type_id);
+        if (printer_technology() != ptSLA) {
+            names.Add(_L("Support Column"));
+            types.emplace_back(ModelVolumeType::SUPPORT_COLUMN);
+        }
     }
 
     if (printer_technology() != ptSLA) {

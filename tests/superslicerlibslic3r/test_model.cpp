@@ -12,6 +12,18 @@
 using namespace Slic3r;
 using namespace Slic3r::Test;
 
+TEST_CASE("ModelVolume support column type serializes", "[Model][SupportMaterial][SupportColumn]")
+{
+    REQUIRE(ModelVolume::type_from_string("SupportColumn") == ModelVolumeType::SUPPORT_COLUMN);
+    REQUIRE(ModelVolume::type_to_string(ModelVolumeType::SUPPORT_COLUMN) == "SupportColumn");
+
+    Model model;
+    ModelObject *object = model.add_object();
+    ModelVolume *volume = object->add_volume(make_cube(1., 1., 1.), ModelVolumeType::SUPPORT_COLUMN);
+    REQUIRE(volume->is_support_column());
+    REQUIRE(volume->is_support_modifier());
+}
+
 SCENARIO("Model construction") {
     GIVEN("A Slic3r Model") {
         Model model{};

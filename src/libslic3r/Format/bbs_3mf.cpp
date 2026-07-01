@@ -4146,6 +4146,8 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
             subtype_str = "SupportEnforcer";
         else if("support_blocker" == subtype_str)
             subtype_str = "SupportBlocker";
+        else if("support_column" == subtype_str)
+            subtype_str = "SupportColumn";
         ModelVolumeType type = ModelVolume::type_from_string(subtype_str);
 
         int subbject_id = bbs_get_attribute_value_int(attributes, num_attributes, ID_ATTR);
@@ -4862,6 +4864,8 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                         subtype_str = "SupportEnforcer";
                     else if("support_blocker" == subtype_str)
                         subtype_str = "SupportBlocker";
+                    else if("support_column" == subtype_str)
+                        subtype_str = "SupportColumn";
                     volume->set_type(ModelVolume::type_from_string(subtype_str));
                 } else if (metadata.key == SOURCE_FILE_KEY)
                     volume->source.input_file = metadata.value;

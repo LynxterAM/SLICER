@@ -341,6 +341,7 @@ enum class ModelVolumeType : int {
     SEAM_POSITION_INSIDE, //TODO
     BRIM_PATCH,
     BRIM_NEGATIVE,
+    SUPPORT_COLUMN,
 };
 
 // A printable object, possibly having multiple print volumes (each with its own set of parameters and materials),
@@ -861,7 +862,8 @@ public:
 	bool                is_modifier()           const { return m_type == ModelVolumeType::PARAMETER_MODIFIER; }
 	bool                is_support_enforcer()   const { return m_type == ModelVolumeType::SUPPORT_ENFORCER; }
 	bool                is_support_blocker()    const { return m_type == ModelVolumeType::SUPPORT_BLOCKER; }
-    bool                is_support_modifier()   const { return m_type == ModelVolumeType::SUPPORT_BLOCKER || m_type == ModelVolumeType::SUPPORT_ENFORCER; }
+    bool                is_support_column()     const { return m_type == ModelVolumeType::SUPPORT_COLUMN; }
+    bool                is_support_modifier()   const { return m_type == ModelVolumeType::SUPPORT_BLOCKER || m_type == ModelVolumeType::SUPPORT_ENFORCER || m_type == ModelVolumeType::SUPPORT_COLUMN; }
     bool                is_seam_position()      const { return m_type == ModelVolumeType::SEAM_POSITION_CENTER || m_type == ModelVolumeType::SEAM_POSITION_CENTER_Z || m_type == ModelVolumeType::SEAM_POSITION_INSIDE_CENTER || m_type == ModelVolumeType::SEAM_POSITION_INSIDE; }
     bool                is_brim_patch()         const { return m_type == ModelVolumeType::BRIM_PATCH; }
     bool                is_brim_negative()      const { return m_type == ModelVolumeType::BRIM_NEGATIVE; }

@@ -987,6 +987,8 @@ void ObjectManipulation::change_rotation_value(int axis, double value)
 
     GLCanvas3D* canvas = wxGetApp().plater()->canvas3D();
     Selection& selection = canvas->get_selection();
+    if (selection.is_single_support_column() && axis != 2)
+        return;
 
     TransformationType transformation_type;
     transformation_type.set_relative();

@@ -3608,7 +3608,7 @@ void Plater::priv::process_validation_warning(const std::vector<std::string>& wa
         std::function<bool(wxEvtHandler*)> action_fn = [](wxEvtHandler*){ return false; };
 
         if (text == "_SUPPORTS_OFF") {
-            text = _u8L("An object has custom support enforcers which will not be used "
+            text = _u8L("An object has custom support enforcers or support columns which will not be used "
                         "because supports are disabled.")+"\n";
             hypertext = _u8L("Enable supports for enforcers only");
             action_fn = [](wxEvtHandler*) {
@@ -3622,6 +3622,8 @@ void Plater::priv::process_validation_warning(const std::vector<std::string>& wa
                 return true;
             };
         }
+        if (text == "_SUPPORT_COLUMNS_ONLY_FILLED")
+            text = _u8L("An object has support columns which will not be used because support columns are only used by filled supports.");
         if (text == "_BED_TEMPS_DIFFER")
             text = _u8L("Bed temperatures for the used filaments differ significantly.");
 
