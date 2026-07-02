@@ -1474,9 +1474,9 @@ static inline std::tuple<Polygons, Polygons, Polygons, float> detect_overhangs(
                 }
             }
         }
-    overhang_polygons = closing(overhang_polygons, double(max_flow_width) * 0.1);
-    contact_polygons = closing(contact_polygons, double(max_flow_width) * 0.1);
-    enforcer_polygons = closing(enforcer_polygons, double(max_flow_width) * 0.1);
+    overhang_polygons = ensure_valid(closing(overhang_polygons, double(max_flow_width) * 0.1));
+    contact_polygons = ensure_valid(closing(contact_polygons, double(max_flow_width) * 0.1));
+    enforcer_polygons = ensure_valid(closing(enforcer_polygons, double(max_flow_width) * 0.1));
 
     return std::make_tuple(std::move(overhang_polygons), std::move(contact_polygons), std::move(enforcer_polygons), no_interface_offset);
 }
@@ -2271,7 +2271,7 @@ void PrintObjectSupportMaterial::trim_top_contacts_by_bottom_contacts(
                     assert(layer_bottom.bottom_print_z() - EPSILON <= layer_top.bottom_z);
                     if (layer_top.print_z < layer_bottom.print_z + EPSILON) {
                         // Layers overlap. Trim layer_top with layer_bottom.
-                        layer_top.polygons = diff(layer_top.polygons, layer_bottom.polygons);
+                        layer_top.polygons = ensure_valid(diff(layer_top.polygons, layer_bottom.polygons));
                     } else
                         break;
                 }
