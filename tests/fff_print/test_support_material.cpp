@@ -98,6 +98,23 @@ DynamicPrintConfig filled_support_interface_perimeter_config(
     return config;
 }
 
+DynamicPrintConfig filled_support_first_layer_config(double raft_density_percent, double raft_expansion)
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", "filled" },
+        { "support_material_contact_distance_type", "none" },
+        { "support_material_interface_layers", 0 },
+        { "support_material_top_interface_pattern", "rectilinear" },
+        { "support_material_interface_perimeters", 0 },
+        { "dont_support_bridges", 0 }
+    });
+    config.set_key_value("raft_first_layer_density", new ConfigOptionPercent(raft_density_percent));
+    config.set_key_value("raft_first_layer_expansion", new ConfigOptionFloat(raft_expansion));
+    return config;
+}
+
 DynamicPrintConfig support_interface_gap_fill_config(double interface_spacing)
 {
     DynamicPrintConfig config = support_interface_perimeter_config(1);
@@ -187,6 +204,22 @@ double max_support_island_area(const PrintObject &object)
     for (const SupportLayer *support_layer : object.support_layers())
         max_area = std::max(max_area, total_unscaled_area(support_layer->support_islands));
     return max_area;
+}
+
+const SupportLayer *first_bed_support_layer(const PrintObject &object)
+{
+    for (const SupportLayer *support_layer : object.support_layers())
+        if (support_layer->bottom_z() <= EPSILON)
+            return support_layer;
+    return nullptr;
+}
+
+const SupportLayer *first_support_layer_above_bed(const PrintObject &object)
+{
+    for (const SupportLayer *support_layer : object.support_layers())
+        if (support_layer->bottom_z() > EPSILON)
+            return support_layer;
+    return nullptr;
 }
 
 bool collect_classic_support_interface_gap_fill_flag(double interface_spacing)
@@ -386,6 +419,54 @@ TEST_CASE("SupportMaterial: filled style supports interface perimeters", "[Suppo
     REQUIRE(stats.saw_entity);
     REQUIRE(stats.only_interface);
     REQUIRE(stats.interface_loop_count > 0);
+}
+
+TEST_CASE("SupportMaterial: filled first layer uses raft density", "[SupportMaterial][FilledSupport]")
+{
+    Print sparse_print;
+    init_and_process_print({ TestMesh::overhang }, sparse_print, filled_support_first_layer_config(50., 0.));
+    const SupportLayer *sparse_layer = first_bed_support_layer(*sparse_print.objects().front());
+    REQUIRE(sparse_layer != nullptr);
+    SupportInterfaceStats sparse_stats;
+    sparse_layer->support_fills.visit(sparse_stats);
+
+    Print dense_print;
+    init_and_process_print({ TestMesh::overhang }, dense_print, filled_support_first_layer_config(100., 0.));
+    const SupportLayer *dense_layer = first_bed_support_layer(*dense_print.objects().front());
+    REQUIRE(dense_layer != nullptr);
+    SupportInterfaceStats dense_stats;
+    dense_layer->support_fills.visit(dense_stats);
+
+    REQUIRE(sparse_stats.saw_entity);
+    REQUIRE(dense_stats.saw_entity);
+    REQUIRE(sparse_stats.only_interface);
+    REQUIRE(dense_stats.only_interface);
+    REQUIRE(sparse_stats.interface_path_length > 0.);
+    REQUIRE(dense_stats.interface_path_length > sparse_stats.interface_path_length);
+}
+
+TEST_CASE("SupportMaterial: filled first layer uses raft expansion", "[SupportMaterial][FilledSupport]")
+{
+    Print regular_print;
+    init_and_process_print({ TestMesh::overhang }, regular_print, filled_support_first_layer_config(100., 0.));
+    const PrintObject *regular_object = regular_print.objects().front();
+    const SupportLayer *regular_first_layer = first_bed_support_layer(*regular_object);
+    const SupportLayer *regular_upper_layer = first_support_layer_above_bed(*regular_object);
+    REQUIRE(regular_first_layer != nullptr);
+    REQUIRE(regular_upper_layer != nullptr);
+
+    Print expanded_print;
+    init_and_process_print({ TestMesh::overhang }, expanded_print, filled_support_first_layer_config(100., 2.));
+    const PrintObject *expanded_object = expanded_print.objects().front();
+    const SupportLayer *expanded_first_layer = first_bed_support_layer(*expanded_object);
+    const SupportLayer *expanded_upper_layer = first_support_layer_above_bed(*expanded_object);
+    REQUIRE(expanded_first_layer != nullptr);
+    REQUIRE(expanded_upper_layer != nullptr);
+
+    REQUIRE(total_unscaled_area(expanded_first_layer->support_islands) >
+        total_unscaled_area(regular_first_layer->support_islands) + 1.);
+    REQUIRE(total_unscaled_area(expanded_upper_layer->support_islands) ==
+        Approx(total_unscaled_area(regular_upper_layer->support_islands)).margin(0.05));
 }
 
 TEST_CASE("SupportMaterial: filled style extrusion footprint stays inside support islands", "[SupportMaterial][FilledSupport]")

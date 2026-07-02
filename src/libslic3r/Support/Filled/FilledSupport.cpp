@@ -78,9 +78,18 @@ static std::vector<Polygons> project_support_columns(
 static void emit_filled_support_layers(
     PrintObject                 &object,
     const std::vector<Polygons> &support_by_layer,
+    const std::vector<Polygons> &object_clearance_masks,
     const PrintRegionConfig     &region_config,
     InfillPattern                pattern,
     coord_t                      resolution);
+
+// Expands the first bed layer like a raft flange while keeping model clearance.
+static ExPolygons expand_filled_first_layer_areas(
+    ExPolygons          support_areas,
+    const Polygons     &object_clearance_mask,
+    const PrintObject  &object,
+    double              layer_height,
+    coord_t             resolution);
 
 // Generates dense interface extrusions for one synchronized support layer.
 static void generate_filled_layer_extrusions(
@@ -300,6 +309,7 @@ std::vector<Polygons> project_support_columns(
 void emit_filled_support_layers(
     PrintObject                 &object,
     const std::vector<Polygons> &support_by_layer,
+    const std::vector<Polygons> &object_clearance_masks,
     const PrintRegionConfig     &region_config,
     InfillPattern                pattern,
     coord_t                      resolution)
@@ -316,6 +326,13 @@ void emit_filled_support_layers(
         if (support_areas.empty())
             continue;
 
+        if (object_layer.bottom_z() <= EPSILON) {
+            support_areas = expand_filled_first_layer_areas(
+                std::move(support_areas), object_clearance_masks[object_layer_id], object, object_layer.height, resolution);
+            if (support_areas.empty())
+                continue;
+        }
+
         object.add_support_layer(int(object.support_layer_count()), int(interface_id), object_layer.height, object_layer.print_z);
         SupportLayer &support_layer = *object.edit_support_layers().back();
         support_layer.support_islands = support_areas;
@@ -326,6 +343,35 @@ void emit_filled_support_layers(
         generate_filled_layer_extrusions(support_layer, std::move(support_areas), object, region_config, pattern, resolution);
         ++interface_id;
     }
+}
+
+ExPolygons expand_filled_first_layer_areas(
+    ExPolygons          support_areas,
+    const Polygons     &object_clearance_mask,
+    const PrintObject  &object,
+    double              layer_height,
+    coord_t             resolution)
+{
+    const double expansion = scale_(object.config().raft_first_layer_expansion.value);
+    if (expansion <= double(SCALED_EPSILON))
+        return support_areas;
+
+    const Flow flow = support_material_interface_flow(&object, float(layer_height));
+    const double step_reference = std::max<double>(double(SCALED_EPSILON), double(flow.scaled_width()));
+    const int step_count = std::max(5, int(std::ceil(expansion / step_reference)));
+    const double step = expansion / double(step_count);
+
+    ExPolygons expanded = std::move(support_areas);
+    for (int step_idx = 0; step_idx < step_count; ++step_idx) {
+        Polygons expanded_polygons = expand(expanded, step, jtSquare, 0.);
+        expanded = object_clearance_mask.empty() ?
+            union_ex(expanded_polygons) :
+            diff_ex(expanded_polygons, object_clearance_mask);
+        ensure_valid(expanded, resolution);
+        if (expanded.empty())
+            break;
+    }
+    return expanded;
 }
 
 void generate_filled_layer_extrusions(
@@ -350,7 +396,9 @@ void generate_filled_layer_extrusions(
     }
 
     FillParams fill_params;
-    fill_params.density = 1.f;
+    fill_params.density = support_layer.bottom_z() <= EPSILON ?
+        float(object.config().raft_first_layer_density.get_abs_value(1.f)) :
+        1.f;
     fill_params.dont_adjust = true;
     fill_params.config = &region_config;
     fill_params.flow = flow;
@@ -406,7 +454,7 @@ void filled_support_generate(PrintObject &object, std::function<void()> throw_on
 
     const std::vector<Polygons> support_by_layer = project_support_columns(
         object, annotations, object_clearance_masks, model_below_masks, resolution, throw_on_cancel);
-    emit_filled_support_layers(object, support_by_layer, region_config, pattern, resolution);
+    emit_filled_support_layers(object, support_by_layer, object_clearance_masks, region_config, pattern, resolution);
 }
 
 } // namespace Slic3r

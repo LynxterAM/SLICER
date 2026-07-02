@@ -602,10 +602,12 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     toggle_field("brim_speed", have_brim || have_skirt);
 
     bool have_raft_soluble = have_support_material && ((ConfigOptionEnumGeneric*)config->option("raft_contact_distance_type"))->value == zdNone;
-    toggle_field("raft_contact_distance", have_raft && !have_raft_soluble);
+    toggle_field("raft_layers", !has_filled_supports);
+    toggle_field("raft_contact_distance_type", !has_filled_supports);
+    toggle_field("raft_contact_distance", have_raft && !have_raft_soluble && !has_filled_supports);
     for (auto el : { "raft_expansion", "first_layer_acceleration_over_raft", "first_layer_speed_over_raft",
         "raft_layer_height", "raft_interface_layer_height"})
-        toggle_field(el, have_raft);
+        toggle_field(el, have_raft && !has_filled_supports);
 
     //for default_extrusion_width/spacing, you need to ahve at least an extrusion_width with 0
     auto opt_first_layer_width = config->option("first_layer_extrusion_width");
