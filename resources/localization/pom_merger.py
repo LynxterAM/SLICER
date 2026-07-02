@@ -1,4 +1,5 @@
 import re
+import os
 from datetime import date
 
 try:
@@ -176,15 +177,9 @@ def main():
 					print(line.msgstr);
 		#add def from conf files
 		if ui_dir:
-			new_data = parse_ui_file(ui_dir+"/extruder.ui");
-			new_data.extend(parse_ui_file(ui_dir+"/extruder.ui"));
-			new_data.extend(parse_ui_file(ui_dir+"/filament.ui"));
-			new_data.extend(parse_ui_file(ui_dir+"/milling.ui"));
-			new_data.extend(parse_ui_file(ui_dir+"/print.ui"));
-			new_data.extend(parse_ui_file(ui_dir+"/printer_fff.ui"));
-			new_data.extend(parse_ui_file(ui_dir+"/printer_sla.ui"));
-			new_data.extend(parse_ui_file(ui_dir+"/sla_material.ui"));
-			new_data.extend(parse_ui_file(ui_dir+"/sla_print.ui"));
+			new_data = list();
+			for ui_file in iter_ui_files(ui_dir):
+				new_data.extend(parse_ui_file(ui_file));
 			print("String from ui files: " + str(len(new_data)));
 			for dataline in new_data:
 				if not dataline.msgid in dict_ope:
@@ -468,6 +463,12 @@ def outputDatabase(file_path_out):
 	except Exception as error:
 		print("error, cannot write file " + file_path_out);
 		print(error);
+
+def iter_ui_files(ui_dir):
+	for root, _, files in os.walk(ui_dir):
+		for file_name in sorted(files):
+			if file_name.endswith(".ui"):
+				yield os.path.join(root, file_name);
 
 def parse_ui_file(file_path):
 	read_data_lines = list();
