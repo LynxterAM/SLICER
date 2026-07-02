@@ -1,20 +1,24 @@
 
-#: ../../ui_layout/default/print.ui
+#: ../../ui_layout/default\freq_fff.ui : l10
+msgid "%"
+msgstr ""
+
+#: ../../ui_layout/default\print.ui
 msgid "_"
 msgstr ""
 
-#: ../../ui_layout/default/printer_sla.ui : l9
+#: ../../ui_layout/default\printer_sla.ui : l9
 msgid "X"
 msgstr ""
 
-#: ../../ui_layout/default/printer_sla.ui : l10
+#: ../../ui_layout/default\printer_sla.ui : l10
 msgid "Y"
 msgstr ""
 
-#: ../../ui_layout/default/print.ui : l286
+#: ../../ui_layout/default\print.ui : l415
 msgid "z"
 msgstr ""
 
-#: ../../ui_layout/default/printer_sla.ui : l28
+#: ../../ui_layout/default\printer_sla.ui : l29
 msgid "Z"
 msgstr ""
