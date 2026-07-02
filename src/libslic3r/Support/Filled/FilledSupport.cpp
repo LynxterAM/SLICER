@@ -341,6 +341,7 @@ void generate_filled_layer_extrusions(
     fill_params.role = ExtrusionRole::SupportMaterialInterface;
     fill_params.fill_resolution = resolution;
     fill_params.layer_height = float(support_layer.height);
+    fill_params.add_gap_fill = object.config().support_material_interface_gap_fill.value;
 
     filler->set_bounding_box(object.bounding_box());
     filler->set_config(&object.print()->config(), &object.config());

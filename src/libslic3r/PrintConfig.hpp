@@ -835,6 +835,7 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionInt,                  support_material_interface_layers))
     ((ConfigOptionFloatOrPercent,       support_material_interface_layer_height))
     ((ConfigOptionInt,                  support_material_interface_perimeters))
+    ((ConfigOptionBool,                 support_material_interface_gap_fill))
     // Spacing between interface lines (the hatching distance). Set zero to get a solid interface.
     ((ConfigOptionFloat,                support_material_interface_spacing))
     ((ConfigOptionFloatOrPercent,       support_material_interface_speed))

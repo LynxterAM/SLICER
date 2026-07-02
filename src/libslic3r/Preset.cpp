@@ -799,6 +799,7 @@ static std::vector<std::string> s_Preset_print_options {
         "support_material_interface_angle",
         "support_material_interface_angle_increment",
         "support_material_interface_contact_loops",
+        "support_material_interface_gap_fill",
         "support_material_interface_perimeters",
         "support_material_interface_spacing",
         "support_material_contact_distance_type",

@@ -542,6 +542,8 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     bool has_filled_supports = have_support_material && support_material_style == smsFilled;
     bool have_support_interface = have_support_material &&
         (has_filled_supports || config->opt_int("support_material_interface_layers") > 0 || config->opt_int("support_material_bottom_interface_layers") > 0);
+    const bool support_interface_gap_fill_available =
+        has_filled_supports || config->opt_float("support_material_interface_spacing") == 0.;
     toggle_field("support_material_style", have_support_material);
     toggle_field("support_material_contact_distance_type", have_support_material);
     toggle_field("support_material_xy_spacing", have_support_material);
@@ -575,6 +577,9 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
         toggle_field(el, have_support_material && have_support_interface);
     toggle_field("support_material_interface_perimeters",
         have_support_material && have_support_interface && support_material_style != smsTree && support_material_style != smsOrganic);
+    toggle_field("support_material_interface_gap_fill",
+        have_support_material && have_support_interface && support_interface_gap_fill_available &&
+        support_material_style != smsTree && support_material_style != smsOrganic);
 
     toggle_field("support_material_synchronize_layers", have_support_soluble && !has_filled_supports);
 

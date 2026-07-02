@@ -125,6 +125,8 @@ SupportParameters::SupportParameters(const PrintObject &object)
     this->raft_interface_fill_pattern = this->raft_interface_density > 0.95 ? ipRectilinear : ipSupportBase;
     this->contact_top_fill_pattern    = object_config.support_material_top_interface_pattern;
     this->contact_bottom_fill_pattern = object_config.support_material_bottom_interface_pattern;
+    this->interface_gap_fill          = object_config.support_material_interface_gap_fill.value &&
+                                        object_config.support_material_interface_spacing.value == 0.;
     this->interface_perimeters        = object_config.support_material_interface_perimeters.value < 0 ?
                                             0u :
                                             static_cast<unsigned int>(object_config.support_material_interface_perimeters.value);

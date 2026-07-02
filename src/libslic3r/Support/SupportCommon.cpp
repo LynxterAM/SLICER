@@ -570,6 +570,9 @@ static inline void fill_expolygon_generate_paths(
     filler->init_spacing(spacing, new_params);
     {
         assert(!fill_params.use_arachne);
+        filler->no_overlap_expolygons.clear();
+        if (new_params.add_gap_fill)
+            filler->no_overlap_expolygons.push_back(expolygon);
         Surface surface(stPosInternal | stDensSparse, std::move(expolygon));
         // TODO: catch exception here?
         filler->fill_surface_extrusion(&surface, new_params, dst);
@@ -602,12 +605,14 @@ static inline void fill_expolygons_generate_paths(
     ExtrusionRole            role,
     const Flow              &flow,
     double                   spacing,
-    const PrintRegionConfig& region_config)
+    const PrintRegionConfig& region_config,
+    bool                     add_gap_fill = false)
 {
     FillParams fill_params;
     fill_params.density     = density;
     fill_params.dont_adjust = true;
     fill_params.config      = &region_config;
+    fill_params.add_gap_fill = add_gap_fill;
     fill_expolygons_generate_paths(dst, std::move(expolygons), filler, fill_params, density, role, flow, spacing);
 }
 
@@ -1800,6 +1805,9 @@ void generate_support_toolpaths(
                 continue;
             filler->link_max_length = scale_t(spacing * link_max_length_factor / density);
             //fill_expolygons_with_sheath_generate_paths( //TODO 2.7 test if the pattern contains the sheath
+            const ExtrusionRole raft_fill_role = (support_layer_id < slicing_params.base_raft_layers) ?
+                                                 ExtrusionRole::SupportMaterial :
+                                                 ExtrusionRole::SupportMaterialInterface;
             fill_expolygons_generate_paths(
                 // Destination
                 support_layer.support_fills.set_entities(), 
@@ -1809,9 +1817,8 @@ void generate_support_toolpaths(
                 // Filler and its parameters
                 filler, density,
                 // Extrusion parameters
-                (support_layer_id < slicing_params.base_raft_layers) ? ExtrusionRole::SupportMaterial :
-                                                                       ExtrusionRole::SupportMaterialInterface,
-                flow, spacing, support_params.default_region_config);
+                raft_fill_role, flow, spacing, support_params.default_region_config,
+                support_params.interface_gap_fill && raft_fill_role == ExtrusionRole::SupportMaterialInterface);
 #ifndef NDEBUG
             support_layer.support_fills.visit(verifier);
 #endif // NDEBUG
@@ -2096,7 +2103,8 @@ void generate_support_toolpaths(
                         filler, float(supp_density),
                         // Extrusion parameters
                         interface_as_base ? ExtrusionRole::SupportMaterial : ExtrusionRole::SupportMaterialInterface, interface_flow,
-                        filler_spacing, support_params.default_region_config);
+                        filler_spacing, support_params.default_region_config,
+                        support_params.interface_gap_fill && !interface_as_base);
                 }
             };
             const bool top_interfaces = config.support_material_interface_layers.value != 0;

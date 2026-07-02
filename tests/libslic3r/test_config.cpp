@@ -106,12 +106,21 @@ TEST_CASE("Support interface perimeter config", "[Config][SupportMaterial]") {
     CHECK(config.opt_int("support_material_interface_perimeters") == 0);
     CHECK(config.opt_serialize("support_material_interface_perimeters") == "0");
 
+    config.set_deserialize_strict("support_material_interface_gap_fill", "1");
+    CHECK(config.opt_bool("support_material_interface_gap_fill"));
+    CHECK(config.opt_serialize("support_material_interface_gap_fill") == "1");
+
+    config.set_deserialize_strict("support_material_interface_gap_fill", "0");
+    CHECK(!config.opt_bool("support_material_interface_gap_fill"));
+    CHECK(config.opt_serialize("support_material_interface_gap_fill") == "0");
+
     t_config_option_key top_key = "support_material_top_interface_pattern";
     std::string top_value = "rectiwithperimeter";
     PrintConfigDef::handle_legacy_pair(top_key, top_value);
     CHECK(top_key == "support_material_top_interface_pattern");
     CHECK(top_value == "rectilinear");
     config.set_deserialize_strict(top_key, top_value);
+
     const ConfigOptionEnum<InfillPattern> *top_pattern =
         config.opt<ConfigOptionEnum<InfillPattern>>("support_material_top_interface_pattern");
     CHECK(top_pattern->value == ipRectilinear);

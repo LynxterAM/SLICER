@@ -6572,6 +6572,14 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvancedE | comSuSi;
     def->set_default_value(new ConfigOptionInt(1));
 
+    def = this->add("support_material_interface_gap_fill", coBool);
+    def->label = L("Interface gap fill");
+    def->category = OptionCategory::support;
+    def->tooltip = L("Fill narrow unextruded gaps in dense support interfaces."
+        "\nOnly applies to filled supports or to solid support interfaces with zero interface pattern spacing.");
+    def->mode = comAdvancedE | comSuSi;
+    def->set_default_value(new ConfigOptionBool(false));
+
     def = this->add("support_material_interface_extruder", coInt);
     def->label = L("Support material/raft interface extruder");
     def->category = OptionCategory::extruders;
@@ -10628,6 +10636,7 @@ std::unordered_set<std::string> prusa_export_to_remove_keys = {
 "support_material_interface_angle",
 "support_material_interface_angle_increment",
 "support_material_interface_fan_speed",
+"support_material_interface_gap_fill",
 "support_material_interface_layer_height",
 "support_material_interface_perimeters",
 "support_material_bottom_interface_expansion",

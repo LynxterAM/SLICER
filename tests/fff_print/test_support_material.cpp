@@ -1,9 +1,11 @@
 #include <catch2/catch.hpp>
 
+#include "libslic3r/ClipperUtils.hpp"
 #include "libslic3r/ExtrusionEntity.hpp"
 #include "libslic3r/GCodeReader.hpp"
 #include "libslic3r/Layer.hpp"
 #include "libslic3r/PrintConfig.hpp"
+#include "libslic3r/Support/SupportParameters.hpp"
 
 #include "test_data.hpp" // get access to init_print, etc
 
@@ -92,6 +94,16 @@ DynamicPrintConfig filled_support_interface_perimeter_config(
     return config;
 }
 
+DynamicPrintConfig support_interface_gap_fill_config(double interface_spacing)
+{
+    DynamicPrintConfig config = support_interface_perimeter_config(1);
+    config.set_deserialize_strict({
+        { "support_material_interface_gap_fill", 1 },
+        { "support_material_interface_spacing", interface_spacing }
+    });
+    return config;
+}
+
 SupportInterfaceStats collect_support_interface_stats(const DynamicPrintConfig &config)
 {
     Print print;
@@ -104,6 +116,19 @@ SupportInterfaceStats collect_support_interface_stats(const DynamicPrintConfig &
     for (const SupportLayer *support_layer : support_layers)
         support_layer->support_fills.visit(stats);
     return stats;
+}
+
+bool collect_classic_support_interface_gap_fill_flag(double interface_spacing)
+{
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, support_interface_gap_fill_config(interface_spacing));
+    FFFSupport::SupportParameters support_params(*print.objects().front());
+    return support_params.interface_gap_fill;
+}
+
+double total_unscaled_area(const ExPolygons &expolygons)
+{
+    return unscaled(unscaled(area(expolygons)));
 }
 
 }
@@ -226,12 +251,40 @@ TEST_CASE("SupportMaterial: interface perimeters use infill overlap", "[SupportM
     REQUIRE(no_overlap_stats.interface_path_length != Approx(half_overlap_stats.interface_path_length));
 }
 
+TEST_CASE("SupportMaterial: interface gap fill requires solid classic interface", "[SupportMaterial]")
+{
+    REQUIRE(!collect_classic_support_interface_gap_fill_flag(0.2));
+    REQUIRE(collect_classic_support_interface_gap_fill_flag(0.));
+}
+
 TEST_CASE("SupportMaterial: filled style supports interface perimeters", "[SupportMaterial][FilledSupport]")
 {
     SupportInterfaceStats stats = collect_support_interface_stats(filled_support_interface_perimeter_config(10., "concentric"));
     REQUIRE(stats.saw_entity);
     REQUIRE(stats.only_interface);
     REQUIRE(stats.interface_loop_count > 0);
+}
+
+TEST_CASE("SupportMaterial: filled style extrusion footprint stays inside support islands", "[SupportMaterial][FilledSupport]")
+{
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, filled_support_interface_perimeter_config(10.));
+    const PrintObject *object = print.objects().front();
+    SpanOfConstPtrs<SupportLayer> support_layers = object->support_layers();
+    REQUIRE(support_layers.size() > 0);
+
+    bool checked_extrusions = false;
+    for (const SupportLayer *support_layer : support_layers) {
+        if (support_layer->support_fills.empty())
+            continue;
+
+        Polygons covered_polygons;
+        support_layer->support_fills.polygons_covered_by_width(covered_polygons, float(SCALED_EPSILON));
+        ExPolygons outside = diff_ex(covered_polygons, offset_ex(support_layer->support_islands, double(SCALED_EPSILON)));
+        REQUIRE(total_unscaled_area(outside) < 0.05);
+        checked_extrusions = true;
+    }
+    REQUIRE(checked_extrusions);
 }
 
 TEST_CASE("SupportMaterial: filled interface perimeters use infill overlap", "[SupportMaterial][FilledSupport]")

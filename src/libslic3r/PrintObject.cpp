@@ -1492,6 +1492,7 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "support_material_interface_angle_increment"
             || opt_key == "support_material_interface_contact_loops"
             || opt_key == "support_material_interface_extruder"
+            || opt_key == "support_material_interface_gap_fill"
             || opt_key == "support_material_interface_perimeters"
             || opt_key == "support_material_interface_spacing"
             || opt_key == "support_material_pattern"
