@@ -573,6 +573,8 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     for (const char *el : { "support_material_top_interface_pattern", "support_material_interface_extruder",
                     "support_material_interface_speed", "support_material_interface_angle", "support_material_interface_angle_increment" })
         toggle_field(el, have_support_material && have_support_interface);
+    toggle_field("support_material_interface_perimeters",
+        have_support_material && have_support_interface && support_material_style != smsTree && support_material_style != smsOrganic);
 
     toggle_field("support_material_synchronize_layers", have_support_soluble && !has_filled_supports);
 

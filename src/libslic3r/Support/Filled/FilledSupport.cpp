@@ -15,6 +15,7 @@
 #include "../../Exception.hpp"
 #include "../../ExtrusionEntityCollection.hpp"
 #include "../../Fill/FillBase.hpp"
+#include "../../Fill/FillWithPerimeter.hpp"
 #include "../../Flow.hpp"
 #include "../../Geometry.hpp"
 #include "../../Layer.hpp"
@@ -319,8 +320,18 @@ void generate_filled_layer_extrusions(
     InfillPattern            pattern,
     coord_t                  resolution)
 {
-    std::unique_ptr<Fill> filler(Fill::new_from_type(pattern));
     const Flow flow = support_material_interface_flow(&object, float(support_layer.height));
+    std::unique_ptr<Fill> filler(Fill::new_from_type(pattern));
+    // Filled supports use the top interface pattern for every support layer.
+    const int configured_perimeters = object.config().support_material_interface_perimeters.value;
+    if (configured_perimeters > 0)
+        filler = std::make_unique<FillWithPerimeter>(filler.release(), static_cast<unsigned int>(configured_perimeters));
+    if (FillWithPerimeter *fill_with_perimeter = dynamic_cast<FillWithPerimeter *>(filler.get())) {
+        if (flow.spacing() > 0.) {
+            const double overlap = region_config.infill_overlap.get_abs_value(flow.spacing());
+            fill_with_perimeter->perimeter_infill_encroachment = float(std::max(0., std::min(0.5, overlap / flow.spacing())));
+        }
+    }
 
     FillParams fill_params;
     fill_params.density = 1.f;
@@ -364,6 +375,8 @@ void filled_support_generate(PrintObject &object, std::function<void()> throw_on
     const PrintRegionConfig region_config = filled_region_config(object);
     InfillPattern pattern = object.config().support_material_top_interface_pattern.value;
     if (pattern == ipAuto)
+        pattern = ipRectilinear;
+    if (pattern == ipRectiWithPerimeter)
         pattern = ipRectilinear;
 
     const coord_t resolution = std::max(SCALED_EPSILON, scale_t(object.print()->config().resolution_internal.value));

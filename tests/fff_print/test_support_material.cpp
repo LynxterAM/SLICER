@@ -3,6 +3,7 @@
 #include "libslic3r/ExtrusionEntity.hpp"
 #include "libslic3r/GCodeReader.hpp"
 #include "libslic3r/Layer.hpp"
+#include "libslic3r/PrintConfig.hpp"
 
 #include "test_data.hpp" // get access to init_print, etc
 
@@ -24,6 +25,86 @@ struct FilledSupportRoleVisitor : public ExtrusionVisitorRecursiveConst
         only_interface = only_interface && entity.role() == ExtrusionRole::SupportMaterialInterface;
     }
 };
+
+struct SupportInterfaceStats : public ExtrusionVisitorRecursiveConst
+{
+    using ExtrusionVisitorRecursiveConst::use;
+
+    bool saw_entity = false;
+    bool only_interface = true;
+    size_t interface_loop_count = 0;
+    double interface_path_length = 0.;
+
+    void default_use(const ExtrusionEntity &entity) override
+    {
+        saw_entity = true;
+        only_interface = only_interface && entity.role() == ExtrusionRole::SupportMaterialInterface;
+    }
+
+    void use(const ExtrusionLoop &loop) override
+    {
+        if (loop.role() == ExtrusionRole::SupportMaterialInterface)
+            ++interface_loop_count;
+        ExtrusionVisitorRecursiveConst::use(loop);
+    }
+
+    void use(const ExtrusionPath &path) override
+    {
+        if (path.role() == ExtrusionRole::SupportMaterialInterface)
+            interface_path_length += path.length();
+        ExtrusionVisitorRecursiveConst::use(path);
+    }
+};
+
+DynamicPrintConfig support_interface_perimeter_config(
+    int perimeter_count, double infill_overlap_percent = 10., const char *interface_pattern = "rectilinear")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", "grid" },
+        { "support_material_interface_layers", 2 },
+        { "support_material_bottom_interface_layers", 0 },
+        { "support_material_interface_contact_loops", 0 },
+        { "support_material_top_interface_pattern", interface_pattern },
+        { "support_material_bottom_interface_pattern", interface_pattern },
+        { "support_material_interface_perimeters", perimeter_count },
+        { "dont_support_bridges", 0 }
+    });
+    config.set_key_value("infill_overlap", new ConfigOptionFloatOrPercent(infill_overlap_percent, true));
+    return config;
+}
+
+DynamicPrintConfig filled_support_interface_perimeter_config(
+    double infill_overlap_percent, const char *interface_pattern = "rectilinear")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", "filled" },
+        { "support_material_contact_distance_type", "none" },
+        { "support_material_interface_layers", 0 },
+        { "support_material_top_interface_pattern", interface_pattern },
+        { "support_material_interface_perimeters", 2 },
+        { "dont_support_bridges", 0 }
+    });
+    config.set_key_value("infill_overlap", new ConfigOptionFloatOrPercent(infill_overlap_percent, true));
+    return config;
+}
+
+SupportInterfaceStats collect_support_interface_stats(const DynamicPrintConfig &config)
+{
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const PrintObject *object = print.objects().front();
+    SpanOfConstPtrs<SupportLayer> support_layers = object->support_layers();
+    REQUIRE(support_layers.size() > 0);
+
+    SupportInterfaceStats stats;
+    for (const SupportLayer *support_layer : support_layers)
+        support_layer->support_fills.visit(stats);
+    return stats;
+}
 
 }
 
@@ -110,6 +191,62 @@ TEST_CASE("SupportMaterial: filled style generates synchronized interface-only l
         REQUIRE(visitor.saw_entity);
         REQUIRE(visitor.only_interface);
     }
+}
+
+TEST_CASE("SupportMaterial: interface perimeter count", "[SupportMaterial]")
+{
+    SupportInterfaceStats no_perimeter_stats = collect_support_interface_stats(support_interface_perimeter_config(0));
+    SupportInterfaceStats two_perimeter_stats = collect_support_interface_stats(support_interface_perimeter_config(2));
+
+    REQUIRE(no_perimeter_stats.saw_entity);
+    REQUIRE(two_perimeter_stats.saw_entity);
+    REQUIRE(no_perimeter_stats.interface_loop_count == 0);
+    REQUIRE(two_perimeter_stats.interface_loop_count > no_perimeter_stats.interface_loop_count);
+}
+
+TEST_CASE("SupportMaterial: interface perimeters wrap non-rectilinear patterns", "[SupportMaterial]")
+{
+    SupportInterfaceStats stats = collect_support_interface_stats(support_interface_perimeter_config(2, 10., "monotonic"));
+
+    REQUIRE(stats.saw_entity);
+    REQUIRE(stats.interface_loop_count > 0);
+    REQUIRE(stats.interface_path_length > 0.);
+}
+
+TEST_CASE("SupportMaterial: interface perimeters use infill overlap", "[SupportMaterial]")
+{
+    SupportInterfaceStats no_overlap_stats = collect_support_interface_stats(support_interface_perimeter_config(2, 0.));
+    SupportInterfaceStats half_overlap_stats = collect_support_interface_stats(support_interface_perimeter_config(2, 50.));
+
+    REQUIRE(no_overlap_stats.saw_entity);
+    REQUIRE(half_overlap_stats.saw_entity);
+    REQUIRE(no_overlap_stats.interface_loop_count == half_overlap_stats.interface_loop_count);
+    REQUIRE(no_overlap_stats.interface_path_length > 0.);
+    REQUIRE(half_overlap_stats.interface_path_length > 0.);
+    REQUIRE(no_overlap_stats.interface_path_length != Approx(half_overlap_stats.interface_path_length));
+}
+
+TEST_CASE("SupportMaterial: filled style supports interface perimeters", "[SupportMaterial][FilledSupport]")
+{
+    SupportInterfaceStats stats = collect_support_interface_stats(filled_support_interface_perimeter_config(10., "concentric"));
+    REQUIRE(stats.saw_entity);
+    REQUIRE(stats.only_interface);
+    REQUIRE(stats.interface_loop_count > 0);
+}
+
+TEST_CASE("SupportMaterial: filled interface perimeters use infill overlap", "[SupportMaterial][FilledSupport]")
+{
+    SupportInterfaceStats no_overlap_stats = collect_support_interface_stats(filled_support_interface_perimeter_config(0.));
+    SupportInterfaceStats half_overlap_stats = collect_support_interface_stats(filled_support_interface_perimeter_config(50.));
+
+    REQUIRE(no_overlap_stats.saw_entity);
+    REQUIRE(half_overlap_stats.saw_entity);
+    REQUIRE(no_overlap_stats.only_interface);
+    REQUIRE(half_overlap_stats.only_interface);
+    REQUIRE(no_overlap_stats.interface_loop_count == half_overlap_stats.interface_loop_count);
+    REQUIRE(no_overlap_stats.interface_path_length > 0.);
+    REQUIRE(half_overlap_stats.interface_path_length > 0.);
+    REQUIRE(no_overlap_stats.interface_path_length != Approx(half_overlap_stats.interface_path_length));
 }
 
 SCENARIO("SupportMaterial: support_layers_z and contact_distance", "[SupportMaterial]")

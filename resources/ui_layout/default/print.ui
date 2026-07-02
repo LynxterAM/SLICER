@@ -348,6 +348,7 @@ group:Options for support material interface
 		setting:label$Bottom:support_material_bottom_interface_pattern
 		setting:label$Spacing:support_material_interface_spacing
 	end_line
+	setting:support_material_interface_perimeters
 	line:Pattern Angle
 		setting:label$_:support_material_interface_angle
 		setting:label$Increment:support_material_interface_angle_increment

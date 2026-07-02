@@ -6562,6 +6562,16 @@ void PrintConfigDef::init_fff_params()
     def->mode = comExpert | comPrusa;
     def->set_default_value(new ConfigOptionBool(false));
 
+    def = this->add("support_material_interface_perimeters", coInt);
+    def->label = L("Interface perimeters");
+    def->category = OptionCategory::support;
+    def->tooltip = L("Number of contour loops generated around support interfaces, independently of the selected interface pattern."
+        "\nSet zero to print only the selected interface fill pattern.");
+    def->sidetext = L("loops");
+    def->min = 0;
+    def->mode = comAdvancedE | comSuSi;
+    def->set_default_value(new ConfigOptionInt(1));
+
     def = this->add("support_material_interface_extruder", coInt);
     def->label = L("Support material/raft interface extruder");
     def->category = OptionCategory::extruders;
@@ -9331,6 +9341,11 @@ void _handle_legacy(std::unordered_map<t_config_option_key, std::pair<t_config_o
             value="concentric";
             set_gapfill = true;
         }
+        if ((opt_key == "support_material_interface_pattern" ||
+             opt_key == "support_material_top_interface_pattern" ||
+             opt_key == "support_material_bottom_interface_pattern") &&
+            value == "rectiwithperimeter")
+            value = "rectilinear";
         if (set_gapfill) {
             if (opt_key == "bottom_fill_pattern") {
                 //note: modifying dict invalidate opt_key & value
@@ -10614,6 +10629,7 @@ std::unordered_set<std::string> prusa_export_to_remove_keys = {
 "support_material_interface_angle_increment",
 "support_material_interface_fan_speed",
 "support_material_interface_layer_height",
+"support_material_interface_perimeters",
 "support_material_bottom_interface_expansion",
 "support_material_bottom_interface_pattern",
 "support_material_layer_height",

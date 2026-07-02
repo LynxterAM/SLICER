@@ -1492,6 +1492,7 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "support_material_interface_angle_increment"
             || opt_key == "support_material_interface_contact_loops"
             || opt_key == "support_material_interface_extruder"
+            || opt_key == "support_material_interface_perimeters"
             || opt_key == "support_material_interface_spacing"
             || opt_key == "support_material_pattern"
             || opt_key == "support_material_style"
@@ -1617,6 +1618,8 @@ bool PrintObject::invalidate_state_by_config_options(
                 || opt_key == "top_solid_infill_overlap") {
             steps.emplace_back(posPerimeters);
             steps.emplace_back(posPrepareInfill);
+            if (opt_key == "infill_overlap")
+                steps.emplace_back(posSupportMaterial);
         } else if (
                     opt_key == "external_perimeter_extrusion_width"
                 || opt_key == "external_perimeter_extrusion_spacing"

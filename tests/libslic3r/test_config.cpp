@@ -99,6 +99,56 @@ TEST_CASE("Get keys", "[Config]"){
     CHECK(!config.keys().empty());
 }
 
+TEST_CASE("Support interface perimeter config", "[Config][SupportMaterial]") {
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+
+    config.set_deserialize_strict("support_material_interface_perimeters", "0");
+    CHECK(config.opt_int("support_material_interface_perimeters") == 0);
+    CHECK(config.opt_serialize("support_material_interface_perimeters") == "0");
+
+    t_config_option_key top_key = "support_material_top_interface_pattern";
+    std::string top_value = "rectiwithperimeter";
+    PrintConfigDef::handle_legacy_pair(top_key, top_value);
+    CHECK(top_key == "support_material_top_interface_pattern");
+    CHECK(top_value == "rectilinear");
+    config.set_deserialize_strict(top_key, top_value);
+    const ConfigOptionEnum<InfillPattern> *top_pattern =
+        config.opt<ConfigOptionEnum<InfillPattern>>("support_material_top_interface_pattern");
+    CHECK(top_pattern->value == ipRectilinear);
+    CHECK(config.opt_serialize("support_material_top_interface_pattern") == "rectilinear");
+
+    t_config_option_key bottom_key = "support_material_bottom_interface_pattern";
+    std::string bottom_value = "rectiwithperimeter";
+    PrintConfigDef::handle_legacy_pair(bottom_key, bottom_value);
+    CHECK(bottom_key == "support_material_bottom_interface_pattern");
+    CHECK(bottom_value == "rectilinear");
+    config.set_deserialize_strict(bottom_key, bottom_value);
+    const ConfigOptionEnum<InfillPattern> *bottom_pattern =
+        config.opt<ConfigOptionEnum<InfillPattern>>("support_material_bottom_interface_pattern");
+    CHECK(bottom_pattern->value == ipRectilinear);
+    CHECK(config.opt_serialize("support_material_bottom_interface_pattern") == "rectilinear");
+
+    t_config_option_key alias_key = "support_material_interface_pattern";
+    std::string alias_value = "rectiwithperimeter";
+    PrintConfigDef::handle_legacy_pair(alias_key, alias_value);
+    CHECK(alias_key == "support_material_interface_pattern");
+    CHECK(alias_value == "rectilinear");
+
+    config.set_deserialize_strict("fill_pattern", "rectiwithperimeter");
+    CHECK(config.opt_serialize("fill_pattern") == "rectiwithperimeter");
+
+    const char *existing_patterns[] = { "rectilinear", "monotonic", "concentric", "hilbertcurve", "smooth" };
+    for (const char *pattern : existing_patterns) {
+        config.set_deserialize_strict("support_material_top_interface_pattern", pattern);
+        CHECK(config.opt_serialize("support_material_top_interface_pattern") == pattern);
+        config.set_deserialize_strict("support_material_bottom_interface_pattern", pattern);
+        CHECK(config.opt_serialize("support_material_bottom_interface_pattern") == pattern);
+    }
+
+    config.set("support_material_interface_perimeters", -1);
+    CHECK(!config.validate().empty());
+}
+
 TEST_CASE("Set not already set option", "[Config]") {
     DynamicPrintConfig config;
     config.set_deserialize_strict("filament_diameter", "3");

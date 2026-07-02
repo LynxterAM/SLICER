@@ -14,6 +14,7 @@
 #include "../Point.hpp"
 #include "../Thread.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <boost/container/static_vector.hpp>
 
@@ -522,6 +523,30 @@ SupportGeneratorLayersPtr generate_raft_base(
         assert_valid(layer->polygons);
     }
     return raft_layers;
+}
+
+// Builds a dense support interface filler, adding contour loops when the interface perimeter count is enabled.
+static inline std::unique_ptr<Fill> make_support_interface_filler(InfillPattern pattern, unsigned int perimeter_count)
+{
+    const InfillPattern support_pattern = pattern == ipRectiWithPerimeter ? ipRectilinear : pattern;
+    std::unique_ptr<Fill> filler(Fill::new_from_type(support_pattern));
+    if (perimeter_count == 0)
+        return filler;
+
+    return std::make_unique<FillWithPerimeter>(filler.release(), perimeter_count);
+}
+
+// Applies the region infill/perimeter encroachment to wrapped support interfaces.
+// The support interface perimeter and infill share the same spacing, so a 50% setting maps to the
+// maximum half-spacing encroachment used by FillWithPerimeter.
+static inline void configure_interface_encroachment(Fill &filler, const PrintRegionConfig &region_config, const Flow &flow)
+{
+    FillWithPerimeter *fill_with_perimeter = dynamic_cast<FillWithPerimeter *>(&filler);
+    if (fill_with_perimeter == nullptr || flow.spacing() <= 0.)
+        return;
+
+    const double overlap = region_config.infill_overlap.get_abs_value(flow.spacing());
+    fill_with_perimeter->perimeter_infill_encroachment = float(std::max(0., std::min(0.5, overlap / flow.spacing())));
 }
 
 static inline void fill_expolygon_generate_paths(
@@ -1835,14 +1860,19 @@ void generate_support_toolpaths(
         size_t idx_layer_intermediate     = size_t(-1);
         size_t idx_layer_interface        = size_t(-1);
         size_t idx_layer_base_interface   = size_t(-1);
-        std::unique_ptr<Fill> filler_top_interface          = std::unique_ptr<Fill>(Fill::new_from_type(support_params.contact_top_fill_pattern));
-        std::unique_ptr<Fill> filler_bottom_interface       = std::unique_ptr<Fill>(Fill::new_from_type(support_params.contact_bottom_fill_pattern));
-        std::unique_ptr<Fill> filler_intermediate_interface = std::unique_ptr<Fill>(Fill::new_from_type(ipRectilinear));
+        std::unique_ptr<Fill> filler_top_interface = make_support_interface_filler(
+            support_params.contact_top_fill_pattern, support_params.interface_perimeters);
+        std::unique_ptr<Fill> filler_bottom_interface = make_support_interface_filler(
+            support_params.contact_bottom_fill_pattern, support_params.interface_perimeters);
+        std::unique_ptr<Fill> filler_intermediate_interface = make_support_interface_filler(
+            ipRectilinear, support_params.interface_perimeters);
+        std::unique_ptr<Fill> filler_intermediate_base = std::unique_ptr<Fill>(Fill::new_from_type(ipRectilinear));
         // Filler for the raft contact layer
-        std::unique_ptr<Fill> filler_raft_contact = std::unique_ptr<Fill>(
+        std::unique_ptr<Fill> filler_raft_contact = make_support_interface_filler(
             range.begin() == n_raft_layers && config.support_material_interface_layers.value == 0 ?
-                Fill::new_from_type(support_params.raft_interface_fill_pattern) :
-                Fill::new_from_type(support_params.contact_top_fill_pattern)); // ??? why not raft_interface_fill_pattern?
+                support_params.raft_interface_fill_pattern :
+                support_params.contact_top_fill_pattern, // ??? why not raft_interface_fill_pattern?
+            support_params.interface_perimeters);
         // Filler for the base interface (to be used for soluble interface / non soluble base, to produce non soluble interface layer below soluble interface layer).
         std::unique_ptr<Fill> filler_base_interface = base_interface_layers.empty() ?
                                                           std::unique_ptr<Fill>{} :
@@ -1862,6 +1892,7 @@ void generate_support_toolpaths(
         filler_bottom_interface->set_bounding_box(bbox_object);
         filler_raft_contact->set_bounding_box(bbox_object);
         filler_intermediate_interface->set_bounding_box(bbox_object);
+        filler_intermediate_base->set_bounding_box(bbox_object);
         filler_support->set_bounding_box(bbox_object);
         if(filler_base_interface)
             filler_base_interface->set_bounding_box(bbox_object);
@@ -1994,7 +2025,8 @@ void generate_support_toolpaths(
                     //FIXME Bottom interfaces are extruded with the briding flow. Some bridging layers have its height slightly reduced, therefore
                     // the bridging flow does not quite apply. Reduce the flow to area of an ellipse? (A = pi * a * b)
                     Fill *filler = interface_layer_type == InterfaceLayerType::TopContact ?    filler_top_interface.get() :
-                                   interface_layer_type == InterfaceLayerType::BottomContact ? filler_bottom_interface.get():
+                                   interface_layer_type == InterfaceLayerType::BottomContact ? filler_bottom_interface.get() :
+                                   interface_as_base ?                                        filler_intermediate_base.get() :
                                                                                                filler_intermediate_interface.get();
                     if (raft_contact)
                         filler = filler_raft_contact.get();
@@ -2033,6 +2065,13 @@ void generate_support_toolpaths(
                         }
                         filler->link_max_length = scale_t(filler_spacing * link_max_length_factor / supp_density);
                     }
+                    const bool pattern_interface_filler =
+                        filler == filler_top_interface.get() ||
+                        filler == filler_bottom_interface.get() ||
+                        filler == filler_intermediate_interface.get() ||
+                        filler == filler_raft_contact.get();
+                    if (pattern_interface_filler)
+                        configure_interface_encroachment(*filler, support_params.default_region_config, interface_flow);
                 
                     //filler->angle = interface_as_base ?
                     //        // If zero interface layers are configured, use the same angle as for the base layers.

@@ -94,6 +94,8 @@ struct SupportParameters {
     // Pattern of the contact layers.
     InfillPattern 			contact_top_fill_pattern;
     InfillPattern 			contact_bottom_fill_pattern;
+    // Number of periemter loops in the interface fill
+    unsigned int            interface_perimeters;
     // Shall the sparse (base) layers be printed with a single perimeter line (sheath) for robustness?
     bool                    with_sheath;
     // Branches of organic supports with area larger than this threshold will be extruded with double lines.
