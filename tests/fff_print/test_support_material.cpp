@@ -11,6 +11,7 @@
 
 #include "test_data.hpp" // get access to init_print, etc
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 
@@ -66,6 +67,31 @@ struct SupportInterfaceStats : public ExtrusionVisitorRecursiveConst
     }
 };
 
+struct PerimeterSupportStats : public ExtrusionVisitorRecursiveConst
+{
+    using ExtrusionVisitorRecursiveConst::use;
+
+    const ExPolygons *support_mask = nullptr;
+    double supported_normal_perimeter_length = 0.;
+    double supported_overhang_perimeter_length = 0.;
+
+    void use(const ExtrusionPath &path) override
+    {
+        if (support_mask == nullptr || support_mask->empty() || !path.role().is_perimeter() || path.empty())
+            return;
+
+        const coord_t arc_deviation = std::max(SCALED_EPSILON, scale_t(std::max(0.001f, path.width() / 10.f)));
+        const Polyline polyline = path.polyline.to_polyline(arc_deviation);
+        if (intersection_pl(polyline, *support_mask).empty())
+            return;
+
+        if (path.role().is_overhang())
+            supported_overhang_perimeter_length += path.length();
+        else if (path.role() == ExtrusionRole::Perimeter || path.role() == ExtrusionRole::ExternalPerimeter)
+            supported_normal_perimeter_length += path.length();
+    }
+};
+
 DynamicPrintConfig support_interface_perimeter_config(
     int perimeter_count, double infill_overlap_percent = 10., const char *interface_pattern = "rectilinear")
 {
@@ -82,6 +108,20 @@ DynamicPrintConfig support_interface_perimeter_config(
         { "dont_support_bridges", 0 }
     });
     config.set_key_value("infill_overlap", new ConfigOptionFloatOrPercent(infill_overlap_percent, true));
+    return config;
+}
+
+DynamicPrintConfig supported_overhang_config(const char *support_style, bool normalize_supported_overhangs = true)
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", support_style },
+        { "support_material_contact_distance_type", "none" },
+        { "support_material_supported_overhangs_as_perimeters", normalize_supported_overhangs ? 1 : 0 },
+        { "support_material_interface_layers", 0 },
+        { "dont_support_bridges", 0 }
+    });
     return config;
 }
 
@@ -234,6 +274,37 @@ const SupportLayer *first_support_layer_above_bed(const PrintObject &object)
     return nullptr;
 }
 
+ExPolygons support_mask_below_object_layer(const PrintObject &object, size_t layer_id)
+{
+    if (layer_id == 0)
+        return ExPolygons();
+
+    const Layer *lower_layer = object.layers()[layer_id]->lower_layer;
+    if (lower_layer == nullptr)
+        return ExPolygons();
+
+    for (const SupportLayer *support_layer : object.support_layers())
+        if (_equiv(support_layer->print_z, lower_layer->print_z))
+            return offset_ex(support_layer->support_islands, double(SCALED_EPSILON));
+    return ExPolygons();
+}
+
+PerimeterSupportStats collect_perimeter_support_stats(const PrintObject &object)
+{
+    PerimeterSupportStats stats;
+    for (size_t layer_id = 1; layer_id < object.layers().size(); ++layer_id) {
+        ExPolygons support_mask = support_mask_below_object_layer(object, layer_id);
+        if (support_mask.empty())
+            continue;
+
+        stats.support_mask = &support_mask;
+        for (const LayerRegion *layer_region : object.layers()[layer_id]->regions())
+            layer_region->perimeters().visit(stats);
+    }
+    stats.support_mask = nullptr;
+    return stats;
+}
+
 bool collect_classic_support_interface_gap_fill_flag(double interface_spacing)
 {
     Print print;
@@ -261,6 +332,16 @@ TEST_CASE("SupportMaterial: filled style parses", "[SupportMaterial][FilledSuppo
     const ConfigOptionEnum<SupportMaterialStyle> *style = config.opt<ConfigOptionEnum<SupportMaterialStyle>>("support_material_style");
     REQUIRE(style->value == smsFilled);
     REQUIRE(config.opt_serialize("support_material_style") == "filled");
+}
+
+TEST_CASE("SupportMaterial: filled supported overhangs setting parses", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    REQUIRE(config.opt_bool("support_material_supported_overhangs_as_perimeters"));
+
+    config.set_deserialize_strict("support_material_supported_overhangs_as_perimeters", "0");
+    REQUIRE(!config.opt_bool("support_material_supported_overhangs_as_perimeters"));
+    REQUIRE(config.opt_serialize("support_material_supported_overhangs_as_perimeters") == "0");
 }
 
 TEST_CASE("SupportMaterial: filled style validates soluble-only", "[SupportMaterial][FilledSupport]")
@@ -327,6 +408,37 @@ TEST_CASE("SupportMaterial: filled style generates synchronized interface-only l
         REQUIRE(visitor.saw_entity);
         REQUIRE(visitor.only_interface);
     }
+}
+
+TEST_CASE("SupportMaterial: filled support normalizes supported overhang perimeters", "[SupportMaterial][FilledSupport]")
+{
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, supported_overhang_config("filled"));
+    const PrintObject &object = *print.objects().front();
+
+    PerimeterSupportStats stats = collect_perimeter_support_stats(object);
+    REQUIRE(stats.supported_normal_perimeter_length > 0.);
+    REQUIRE(stats.supported_overhang_perimeter_length == 0.);
+}
+
+TEST_CASE("SupportMaterial: filled support can keep supported overhang perimeters unchanged", "[SupportMaterial][FilledSupport]")
+{
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, supported_overhang_config("filled", false));
+    const PrintObject &object = *print.objects().front();
+
+    PerimeterSupportStats stats = collect_perimeter_support_stats(object);
+    REQUIRE(stats.supported_overhang_perimeter_length > 0.);
+}
+
+TEST_CASE("SupportMaterial: classic support keeps supported overhang perimeters unchanged", "[SupportMaterial]")
+{
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, supported_overhang_config("grid"));
+    const PrintObject &object = *print.objects().front();
+
+    PerimeterSupportStats stats = collect_perimeter_support_stats(object);
+    REQUIRE(stats.supported_overhang_perimeter_length > 0.);
 }
 
 TEST_CASE("SupportMaterial: filled style uses support column in empty space", "[SupportMaterial][FilledSupport][SupportColumn]")

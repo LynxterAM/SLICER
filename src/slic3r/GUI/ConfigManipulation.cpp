@@ -582,6 +582,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
         support_material_style != smsTree && support_material_style != smsOrganic);
 
     toggle_field("support_material_synchronize_layers", have_support_soluble && !has_filled_supports);
+    toggle_field("support_material_supported_overhangs_as_perimeters", has_filled_supports);
 
     // organic suport don't use soem fields, force disable them.
     if (has_organic_supports) {

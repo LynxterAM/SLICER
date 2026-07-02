@@ -846,6 +846,7 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionFloatOrPercent,       support_material_speed))
     ((ConfigOptionEnum<SupportMaterialStyle>, support_material_style))
     ((ConfigOptionBool,                 support_material_synchronize_layers))
+    ((ConfigOptionBool,                 support_material_supported_overhangs_as_perimeters))
     // Overhang angle threshold.
     ((ConfigOptionInt,                  support_material_threshold))
     ((ConfigOptionEnum<InfillPattern>,  support_material_top_interface_pattern))

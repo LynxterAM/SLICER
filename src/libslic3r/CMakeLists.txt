@@ -393,6 +393,8 @@ set(SLIC3R_SOURCES
     Subdivide.hpp
     Support/Filled/FilledSupport.cpp
     Support/Filled/FilledSupport.hpp
+    Support/Filled/FilledSupportedOverhangs.cpp
+    Support/Filled/FilledSupportedOverhangs.hpp
     Support/SupportCommon.cpp
     Support/SupportCommon.hpp
     Support/SupportDebug.cpp

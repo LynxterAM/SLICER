@@ -28,6 +28,7 @@ class Layer;
 using LayerPtrs = std::vector<Layer*>;
 class LayerRegion;
 using LayerRegionPtrs = std::vector<LayerRegion*>;
+class FilledSupportedOverhangsAccessor;
 class PrintRegion;
 class PrintObject;
 
@@ -215,6 +216,7 @@ protected:
 
 private:
     // Modifying m_slices
+    friend class FilledSupportedOverhangsAccessor;
     friend std::string fix_slicing_errors(LayerPtrs&, const std::function<void()>&);
     template<typename ThrowOnCancel>
     friend void apply_mm_segmentation(PrintObject& print_object, ThrowOnCancel throw_on_cancel);

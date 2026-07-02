@@ -6778,6 +6778,14 @@ void PrintConfigDef::init_fff_params()
     def->mode = comExpert | comPrusa;
     def->set_default_value(new ConfigOptionBool(false));
 
+    def = this->add("support_material_supported_overhangs_as_perimeters", coBool);
+    def->label = L("Normalize supported overhangs");
+    def->category = OptionCategory::support;
+    def->tooltip = L("For filled supports, split overhang perimeter paths by the support islands below them. "
+                   "The supported parts become normal perimeters, while unsupported parts stay as overhangs.");
+    def->mode = comExpert | comSuSi;
+    def->set_default_value(new ConfigOptionBool(false));
+
     def = this->add("support_material_threshold", coInt);
     def->label = L("Overhang threshold");
     def->category = OptionCategory::support;
@@ -10632,6 +10640,7 @@ std::unordered_set<std::string> prusa_export_to_remove_keys = {
 "support_material_acceleration",
 "support_material_contact_distance_type",
 "support_material_fan_speed",
+"support_material_supported_overhangs_as_perimeters",
 "support_material_interface_acceleration",
 "support_material_interface_angle",
 "support_material_interface_angle_increment",

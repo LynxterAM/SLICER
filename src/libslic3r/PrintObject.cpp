@@ -41,6 +41,7 @@
 #include "Fill/FillLightning.hpp"
 #include "Format/STL.hpp"
 #include "Support/Filled/FilledSupport.hpp"
+#include "Support/Filled/FilledSupportedOverhangs.hpp"
 #include "Support/SupportMaterial.hpp"
 #include "SupportSpotsGenerator.hpp"
 #include "TriangleSelectorWrapper.hpp"
@@ -1202,6 +1203,9 @@ void PrintObject::calculate_overhanging_perimeters()
             m_print->throw_if_canceled();
             BOOST_LOG_TRIVIAL(debug) << "Calculating overhanging perimeters - end";
         }
+        if (this->has_support() && m_config.support_material_style.value == smsFilled &&
+            m_config.support_material_supported_overhangs_as_perimeters.value)
+            filled_support_normalize_supported_overhangs(*this, std::function<void()>([this](){ this->throw_if_canceled(); }));
         this->set_done(posCalculateOverhangingPerimeters);
     }
 }
@@ -1348,6 +1352,13 @@ bool PrintObject::invalidate_state_by_config_options(
 
     std::vector<PrintObjectStep> steps;
     bool invalidated = false;
+    const ConfigOptionEnum<SupportMaterialStyle> *old_support_style =
+        old_config.option<ConfigOptionEnum<SupportMaterialStyle>>("support_material_style");
+    const ConfigOptionEnum<SupportMaterialStyle> *new_support_style =
+        new_config.option<ConfigOptionEnum<SupportMaterialStyle>>("support_material_style");
+    const bool filled_support_before_or_after =
+        (old_support_style != nullptr && old_support_style->value == smsFilled) ||
+        (new_support_style != nullptr && new_support_style->value == smsFilled);
     for (const t_config_option_key& opt_key : opt_keys) {
         if (
                opt_key == "arc_fitting"
@@ -1473,6 +1484,9 @@ bool PrintObject::invalidate_state_by_config_options(
                 // See GH #1482 for details.
                 steps.emplace_back(posSlice);
             }
+        } else if (opt_key == "support_material_supported_overhangs_as_perimeters") {
+            if (filled_support_before_or_after)
+                steps.emplace_back(posPerimeters);
         } else if (
               opt_key == "raft_expansion"
             || opt_key == "raft_first_layer_density"
@@ -1505,6 +1519,8 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "support_material_threshold"
             || opt_key == "support_material_with_sheath") {
             steps.emplace_back(posSupportMaterial);
+            if (filled_support_before_or_after)
+                steps.emplace_back(posPerimeters);
         } else if (opt_key == "bottom_solid_layers") {
             steps.emplace_back(posPrepareInfill);
             if (m_print->config().spiral_vase) {
@@ -1783,6 +1799,8 @@ bool PrintObject::invalidate_step(PrintObjectStep step)
         m_slicing_params->valid = false;
     } else if (step == posSupportMaterial) {
         invalidated |= m_print->invalidate_steps({ psSkirtBrim,  });
+        if (m_config.support_material_style.value == smsFilled)
+            invalidated |= this->invalidate_step(posPerimeters);
         invalidated |= this->invalidate_steps({ posEstimateCurledExtrusions });
         m_slicing_params->valid = false;
     }
