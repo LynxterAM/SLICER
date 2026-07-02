@@ -40,6 +40,7 @@ struct SupportInterfaceStats : public ExtrusionVisitorRecursiveConst
     bool saw_entity = false;
     bool only_interface = true;
     size_t interface_loop_count = 0;
+    size_t gap_fill_path_count = 0;
     double interface_path_length = 0.;
 
     void default_use(const ExtrusionEntity &entity) override
@@ -59,6 +60,8 @@ struct SupportInterfaceStats : public ExtrusionVisitorRecursiveConst
     {
         if (path.role() == ExtrusionRole::SupportMaterialInterface)
             interface_path_length += path.length();
+        if (path.role() == ExtrusionRole::GapFill)
+            ++gap_fill_path_count;
         ExtrusionVisitorRecursiveConst::use(path);
     }
 };
@@ -473,6 +476,26 @@ TEST_CASE("SupportMaterial: filled first layer uses raft density", "[SupportMate
     REQUIRE(dense_stats.only_interface);
     REQUIRE(sparse_stats.interface_path_length > 0.);
     REQUIRE(dense_stats.interface_path_length > sparse_stats.interface_path_length);
+}
+
+TEST_CASE("SupportMaterial: filled first layer disables gap fill below full raft density", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = filled_support_first_layer_config(50., 0.);
+    config.set_deserialize_strict({
+        { "support_material_interface_gap_fill", 1 },
+        { "support_material_interface_perimeters", 1 }
+    });
+
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const PrintObject &object = *print.objects().front();
+    const SupportLayer *first_layer = first_bed_support_layer(object);
+    REQUIRE(first_layer != nullptr);
+
+    SupportInterfaceStats first_layer_stats;
+    first_layer->support_fills.visit(first_layer_stats);
+    REQUIRE(first_layer_stats.saw_entity);
+    REQUIRE(first_layer_stats.gap_fill_path_count == 0);
 }
 
 TEST_CASE("SupportMaterial: filled first layer uses raft expansion", "[SupportMaterial][FilledSupport]")

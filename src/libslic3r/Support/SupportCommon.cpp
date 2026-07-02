@@ -1818,7 +1818,7 @@ void generate_support_toolpaths(
                 filler, density,
                 // Extrusion parameters
                 raft_fill_role, flow, spacing, support_params.default_region_config,
-                support_params.interface_gap_fill && raft_fill_role == ExtrusionRole::SupportMaterialInterface);
+                support_params.interface_gap_fill && raft_fill_role == ExtrusionRole::SupportMaterialInterface && density > float(1. - EPSILON));
 #ifndef NDEBUG
             support_layer.support_fills.visit(verifier);
 #endif // NDEBUG
@@ -2104,7 +2104,7 @@ void generate_support_toolpaths(
                         // Extrusion parameters
                         interface_as_base ? ExtrusionRole::SupportMaterial : ExtrusionRole::SupportMaterialInterface, interface_flow,
                         filler_spacing, support_params.default_region_config,
-                        support_params.interface_gap_fill && !interface_as_base);
+                        support_params.interface_gap_fill && !interface_as_base && supp_density > float(1. - EPSILON));
                 }
             };
             const bool top_interfaces = config.support_material_interface_layers.value != 0;
