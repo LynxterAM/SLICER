@@ -594,27 +594,6 @@ bool Selection::is_single_text() const
     return model_volume && model_volume->text_configuration.has_value();
 }
 
-bool Selection::is_single_support_column() const
-{
-    if (!is_single_volume_or_modifier() || m_list.size() != 1)
-        return false;
-
-    const GLVolume *gl_volume = this->get_first_volume();
-    if (gl_volume == nullptr)
-        return false;
-
-    const int object_idx = gl_volume->object_idx();
-    const int volume_idx = gl_volume->volume_idx();
-    if (object_idx < 0 || volume_idx < 0 || m_model->objects.size() <= size_t(object_idx))
-        return false;
-
-    const ModelObject *model_object = m_model->objects[object_idx];
-    if (model_object->volumes.size() <= size_t(volume_idx))
-        return false;
-
-    return model_object->volumes[volume_idx]->is_support_column();
-}
-
 bool Selection::contains_all_volumes(const std::vector<unsigned int>& volume_idxs) const
 {
     for (unsigned int i : volume_idxs) {
@@ -1032,21 +1011,12 @@ void Selection::translate(const Vec3d& displacement, TransformationType transfor
 // Rotate an object around one of the axes. Only one rotation component is expected to be changing.
 void Selection::rotate(const Vec3d& rotation, TransformationType transformation_type)
 {
-    if (!m_valid || is_single_support_column())
+    if (!m_valid)
         return;
 
     assert(transformation_type.relative() || (transformation_type.absolute() && transformation_type.local()));
 
     Vec3d effective_rotation = rotation;
-    if (is_single_support_column()) {
-        // Support columns define a vertical XY seed for filled supports.  Tilting
-        // the modifier would make its top face ambiguous, so only Z rotation is
-        // allowed from either the sidebar or the rotate gizmo.
-        effective_rotation.x() = 0.;
-        effective_rotation.y() = 0.;
-        if (effective_rotation.isApprox(Vec3d::Zero()))
-            return;
-    }
 
     bool requires_general_synchronization = false;
 

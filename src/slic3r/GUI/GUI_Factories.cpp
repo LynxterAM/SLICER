@@ -579,7 +579,7 @@ void MenuFactory::append_submenu_add_generic(wxMenu* menu_parent, wxMenu* sub_me
     const ConfigOptionMode mode = wxGetApp().get_mode();
 
     if (type != ModelVolumeType::INVALID && type != ModelVolumeType::SEAM_POSITION_INSIDE &&
-        type != ModelVolumeType::SUPPORT_COLUMN && (mode > comSimple || get_app_config()->get_bool("objects_always_expert"))) {
+        (mode > comSimple || get_app_config()->get_bool("objects_always_expert"))) {
         append_menu_item(sub_menu, wxID_ANY, _L("Load") + " " + dots, "",
             [type](wxCommandEvent&) { obj_list()->load_subobject(type); }, "", menu_parent);
         sub_menu->AppendSeparator();
@@ -588,7 +588,6 @@ void MenuFactory::append_submenu_add_generic(wxMenu* menu_parent, wxMenu* sub_me
     std::vector<std::string> items = { L("Box"), L("Cylinder"), L("Sphere"), L("Slab") };
     if (type == ModelVolumeType::BRIM_PATCH) items = {"Square", "Circle" };
     if (type == ModelVolumeType::BRIM_NEGATIVE) items = {"Square", "Circle" };
-    if (type == ModelVolumeType::SUPPORT_COLUMN) items = { L("Box") };
     for (auto& item : items)
     {
         if (type == ModelVolumeType::INVALID && strncmp(item.c_str(), "Slab", 4) == 0)
@@ -604,7 +603,7 @@ void MenuFactory::append_submenu_add_generic(wxMenu* menu_parent, wxMenu* sub_me
         append_menu_item_add_svg(sub_menu, type);
     }
 
-    if (type != ModelVolumeType::SEAM_POSITION_INSIDE && type != ModelVolumeType::SUPPORT_COLUMN &&
+    if (type != ModelVolumeType::SEAM_POSITION_INSIDE &&
         (mode >= comAdvanced || get_app_config()->get_bool("objects_always_expert"))) {
         sub_menu->AppendSeparator();
         append_menu_item(sub_menu, wxID_ANY, _L("Gallery"), "",
@@ -763,9 +762,9 @@ void MenuFactory::append_menu_items_add_volume(MenuType menu_type)
         append_submenu(sub_menu_both, sub_menu_enforce, wxID_ANY, _L("Enforcer"), "", item_enforce.second, selected_func, m_parent);
         if (menu_type == mtObjectFFF) {
             const std::pair<const char *, const char *> &item_column = ADD_VOLUME_MENU_ITEMS[int(ModelVolumeType::SUPPORT_COLUMN)];
-            append_menu_item(sub_menu_both, wxID_ANY, _(item_column.first), "",
-                [this](wxCommandEvent&) { obj_list()->load_generic_subobject(L("Box"), ModelVolumeType::SUPPORT_COLUMN); },
-                item_column.second, nullptr, selected_func, m_parent);
+            wxMenu* sub_menu_column = new wxMenu;
+            append_submenu_add_generic(sub_menu_both, sub_menu_column, ModelVolumeType::SUPPORT_COLUMN);
+            append_submenu(sub_menu_both, sub_menu_column, wxID_ANY, _L("Column"), "", item_column.second, selected_func, m_parent);
         }
         append_submenu(menu, sub_menu_both, wxID_ANY, combined_support_str, "", item_enforce.second, selected_func, m_parent);
     }

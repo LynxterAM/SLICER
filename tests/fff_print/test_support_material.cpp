@@ -11,6 +11,7 @@
 
 #include "test_data.hpp" // get access to init_print, etc
 
+#include <limits>
 #include <utility>
 
 using namespace Slic3r::Test;
@@ -145,8 +146,7 @@ DynamicPrintConfig support_column_config(const char *support_style)
 TriangleMesh stepped_support_column_mesh()
 {
     // The lower section is intentionally much wider than the upper section.
-    // A top-only support column seed must therefore project the small top face,
-    // not the larger lower cross-section.
+    // Per-layer support column slicing must preserve that wider lower volume.
     TriangleMesh lower = make_cube(12., 12., 4.);
     TriangleMesh upper = make_cube(4., 4., 4.);
     upper.translate(Vec3f(4.f, 4.f, 4.2f));
@@ -198,12 +198,21 @@ double total_unscaled_area(const ExPolygons &expolygons)
     return unscaled(unscaled(area(expolygons)));
 }
 
-double max_support_island_area(const PrintObject &object)
+std::pair<double, double> support_island_area_range(const PrintObject &object)
 {
+    double min_area = std::numeric_limits<double>::max();
     double max_area = 0.;
-    for (const SupportLayer *support_layer : object.support_layers())
-        max_area = std::max(max_area, total_unscaled_area(support_layer->support_islands));
-    return max_area;
+    bool saw_support_island = false;
+    for (const SupportLayer *support_layer : object.support_layers()) {
+        if (support_layer->support_islands.empty())
+            continue;
+        const double layer_area = total_unscaled_area(support_layer->support_islands);
+        min_area = std::min(min_area, layer_area);
+        max_area = std::max(max_area, layer_area);
+        saw_support_island = true;
+    }
+    REQUIRE(saw_support_island);
+    return { min_area, max_area };
 }
 
 const SupportLayer *first_bed_support_layer(const PrintObject &object)
@@ -327,7 +336,26 @@ TEST_CASE("SupportMaterial: filled style uses support column in empty space", "[
     process_support_column_model(print, model, config);
 
     const PrintObject &object = *print.objects().front();
-    REQUIRE(object.support_layers().size() > 0);
+    REQUIRE(object.support_layers().size() > 1);
+    SupportInterfaceStats stats = collect_support_interface_stats(object);
+    REQUIRE(stats.saw_entity);
+    REQUIRE(stats.only_interface);
+}
+
+TEST_CASE("SupportMaterial: filled style slices rotated support column volume", "[SupportMaterial][FilledSupport][SupportColumn]")
+{
+    DynamicPrintConfig config = support_column_config("filled");
+    Print print;
+    Model model;
+    init_print({ TestMesh::cube_20x20x20 }, print, model, config);
+    ModelVolume *support_column = add_support_modifier(model, make_cube(8., 4., 12.), ModelVolumeType::SUPPORT_COLUMN, Vec3d(35., 0., 8.));
+    support_column->rotate(PI / 9., X);
+    support_column->rotate(PI / 12., Y);
+    support_column->rotate(PI / 7., Z);
+    process_support_column_model(print, model, config);
+
+    const PrintObject &object = *print.objects().front();
+    REQUIRE(object.support_layers().size() > 1);
     SupportInterfaceStats stats = collect_support_interface_stats(object);
     REQUIRE(stats.saw_entity);
     REQUIRE(stats.only_interface);
@@ -346,7 +374,7 @@ TEST_CASE("SupportMaterial: classic support ignores support column", "[SupportMa
     REQUIRE(object.support_layers().size() == 0);
 }
 
-TEST_CASE("SupportMaterial: support blocker removes filled support column projection", "[SupportMaterial][FilledSupport][SupportColumn]")
+TEST_CASE("SupportMaterial: support blocker removes filled support column slices", "[SupportMaterial][FilledSupport][SupportColumn]")
 {
     DynamicPrintConfig config = support_column_config("filled");
     Print print;
@@ -360,7 +388,7 @@ TEST_CASE("SupportMaterial: support blocker removes filled support column projec
     REQUIRE(object.support_layers().size() == 0);
 }
 
-TEST_CASE("SupportMaterial: filled support column uses only topmost slice as seed", "[SupportMaterial][FilledSupport][SupportColumn]")
+TEST_CASE("SupportMaterial: filled support column uses sliced volume per layer", "[SupportMaterial][FilledSupport][SupportColumn]")
 {
     DynamicPrintConfig config = support_column_config("filled");
     Print print;
@@ -371,7 +399,9 @@ TEST_CASE("SupportMaterial: filled support column uses only topmost slice as see
 
     const PrintObject &object = *print.objects().front();
     REQUIRE(object.support_layers().size() > 0);
-    REQUIRE(max_support_island_area(object) < 40.);
+    const std::pair<double, double> area_range = support_island_area_range(object);
+    REQUIRE(area_range.first < 40.);
+    REQUIRE(area_range.second > 100.);
 }
 
 TEST_CASE("SupportMaterial: interface perimeter count", "[SupportMaterial]")

@@ -405,8 +405,6 @@ public:
     std::vector<ExPolygons>     slice_support_volumes(const ModelVolumeType model_volume_type) const;
     std::vector<ExPolygons>     slice_support_blockers() const { return this->slice_support_volumes(ModelVolumeType::SUPPORT_BLOCKER); }
     std::vector<ExPolygons>     slice_support_enforcers() const { return this->slice_support_volumes(ModelVolumeType::SUPPORT_ENFORCER); }
-    // Support columns are artificial filled-support seeds.  Only their highest sliced cross-section is kept.
-    std::vector<ExPolygons>     slice_support_column_tops() const;
 
     // Helpers to project custom facets on slices
     std::vector<Polygons> project_and_append_custom_facets(bool seam, EnforcerBlockerType type) const;

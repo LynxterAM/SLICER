@@ -1,11 +1,11 @@
 ///|/ Filled supports are generated as dense soluble interfaces only.
 ///|/
 ///|/ The algorithm is deliberately direct:
-///|/ 1. collect automatic overhangs and user support enforcers/blockers,
+///|/ 1. collect automatic overhangs, support modifiers and support columns,
 ///|/ 2. project each supported area straight down through lower object layers,
-///|/ 3. trim the projected column by object XY clearance and optional
-///|/    build-plate-only masks,
-///|/ 4. create one synchronized SupportLayer per useful object layer and fill it
+///|/ 3. add explicit support-column volume slices on their own object layers,
+///|/ 4. trim support by object XY clearance and optional build-plate-only masks,
+///|/ 5. create one synchronized SupportLayer per useful object layer and fill it
 ///|/    at 100% density with SupportMaterialInterface extrusions.
 ///|/ This file does not include or call the legacy SupportMaterial pipeline.
 
@@ -37,7 +37,7 @@ struct FilledSupportAnnotations
 {
     std::vector<Polygons> enforcers_layers;
     std::vector<Polygons> blockers_layers;
-    std::vector<Polygons> support_columns_layers;
+    std::vector<Polygons> support_column_volumes_layers;
 };
 
 // Rejects settings that would require legacy base/contact/raft behavior.
@@ -65,7 +65,7 @@ static Polygons detect_layer_support_seeds(
     const FilledSupportAnnotations  &annotations,
     coord_t                          resolution);
 
-// Projects detected seed areas vertically through lower synchronized layers.
+// Projects detected seed areas and adds explicit support-column volume slices.
 static std::vector<Polygons> project_support_columns(
     const PrintObject               &object,
     const FilledSupportAnnotations  &annotations,
@@ -124,7 +124,7 @@ FilledSupportAnnotations collect_annotations(const PrintObject &object)
     FilledSupportAnnotations annotations;
     annotations.enforcers_layers.assign(layer_count, Polygons());
     annotations.blockers_layers.assign(layer_count, Polygons());
-    annotations.support_columns_layers.assign(layer_count, Polygons());
+    annotations.support_column_volumes_layers.assign(layer_count, Polygons());
 
     std::vector<ExPolygons> enforcers = object.slice_support_enforcers();
     std::vector<Polygons> custom_enforcers = object.project_and_append_custom_facets(false, EnforcerBlockerType::ENFORCER);
@@ -146,13 +146,12 @@ FilledSupportAnnotations collect_annotations(const PrintObject &object)
             polygons_append(annotations.blockers_layers[layer_id], std::move(custom_blockers[layer_id]));
     }
 
-    // Support columns are artificial top seeds: unlike enforcers, they are not
-    // clipped to object material on the same layer, because they intentionally
-    // create support in empty XY space.
-    std::vector<ExPolygons> support_columns = object.slice_support_column_tops();
+    // Support columns are explicit support volumes.  Their per-layer slices are
+    // added later without vertical projection or same-layer object intersection.
+    std::vector<ExPolygons> support_columns = object.slice_support_volumes(ModelVolumeType::SUPPORT_COLUMN);
     const size_t support_column_layer_count = std::min(layer_count, support_columns.size());
     for (size_t layer_id = 0; layer_id < support_column_layer_count; ++layer_id)
-        polygons_append(annotations.support_columns_layers[layer_id], to_polygons(support_columns[layer_id]));
+        polygons_append(annotations.support_column_volumes_layers[layer_id], to_polygons(support_columns[layer_id]));
 
     return annotations;
 }
@@ -251,12 +250,6 @@ Polygons detect_layer_support_seeds(
         polygons_append(seeds, std::move(enforced));
     }
 
-    if (!annotations.support_columns_layers[layer_id].empty()) {
-        Polygons support_columns = annotations.support_columns_layers[layer_id];
-        ensure_valid(support_columns, resolution);
-        polygons_append(seeds, std::move(support_columns));
-    }
-
     if (!annotations.blockers_layers[layer_id].empty() && !seeds.empty()) {
         const ExPolygons blockers = union_ex(annotations.blockers_layers[layer_id]);
         seeds = diff(seeds, offset_ex(blockers, float(1000. * SCALED_EPSILON)));
@@ -295,6 +288,22 @@ std::vector<Polygons> project_support_columns(
             if (!projection.empty())
                 polygons_append(support_by_layer[size_t(support_layer_id)], projection);
         }
+    }
+
+    for (size_t layer_id = 0; layer_id < layer_count; ++layer_id) {
+        throw_on_cancel();
+        Polygons support_column_volumes = annotations.support_column_volumes_layers[layer_id];
+        if (support_column_volumes.empty())
+            continue;
+
+        support_column_volumes = diff(support_column_volumes, object_clearance_masks[layer_id]);
+        if (!annotations.blockers_layers[layer_id].empty()) {
+            const ExPolygons blockers = union_ex(annotations.blockers_layers[layer_id]);
+            support_column_volumes = diff(support_column_volumes, offset_ex(blockers, float(1000. * SCALED_EPSILON)));
+        }
+        ensure_valid(support_column_volumes, resolution);
+        if (!support_column_volumes.empty())
+            polygons_append(support_by_layer[layer_id], std::move(support_column_volumes));
     }
 
     for (Polygons &layer_polygons : support_by_layer) {
