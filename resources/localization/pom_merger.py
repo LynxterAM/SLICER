@@ -470,6 +470,11 @@ def iter_ui_files(ui_dir):
 			if file_name.endswith(".ui"):
 				yield os.path.join(root, file_name);
 
+def normalize_ui_text(text):
+	text = text.replace("\\.", ":");
+	text = text.replace("\\£", "$");
+	return text;
+
 def parse_ui_file(file_path):
 	read_data_lines = list();
 	# try:
@@ -484,16 +489,16 @@ def parse_ui_file(file_path):
 			if items[0]=="page":
 				current_line = TranslationLine();
 				current_line.header_comment = "\n#: "+file_path;#+":"+str(line_idx);
-				current_line.raw_msgid = "msgid \""+items[1].strip()+"\"";
-				current_line.msgid = items[1].strip();
+				current_line.msgid = normalize_ui_text(items[1].strip());
+				current_line.raw_msgid = "msgid \""+current_line.msgid+"\"";
 				current_line.raw_msgstr = "msgstr \"\"";
 				current_line.msgstr = "";
 				read_data_lines.append(current_line);
 			if items[0]=="group" or items[0]=="line":
 				current_line = TranslationLine();
 				current_line.header_comment = "\n#: "+file_path;#+":"+str(line_idx);
-				current_line.raw_msgid = "msgid \""+items[-1].strip()+"\"";
-				current_line.msgid = items[-1].strip();
+				current_line.msgid = normalize_ui_text(items[-1].strip());
+				current_line.raw_msgid = "msgid \""+current_line.msgid+"\"";
 				current_line.raw_msgstr = "msgstr \"\"";
 				current_line.msgstr = "";
 				read_data_lines.append(current_line);
@@ -503,7 +508,7 @@ def parse_ui_file(file_path):
 						if item.split("$")[-1] != '_' and len(item.split("$")[-1]) > 0 :
 							current_line = TranslationLine();
 							current_line.header_comment = "\n#: "+file_path+" : l"+str(line_idx);
-							current_line.msgid = item.split("$")[-1].strip();
+							current_line.msgid = normalize_ui_text(item.split("$")[-1].strip());
 							if current_line.msgid.endswith('_'):
 								current_line.msgid = current_line.msgid[:-1]
 							current_line.raw_msgid = "msgid \""+current_line.msgid+"\"";
