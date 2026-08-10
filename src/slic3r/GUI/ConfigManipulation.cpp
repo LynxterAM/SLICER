@@ -568,11 +568,12 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     for (auto el : { "support_material_contact_distance", "support_material_bottom_contact_distance" })
         toggle_field(el, have_support_material && !have_support_soluble);
 
-    for (const char *el : { "support_material_bottom_interface_pattern", "support_material_interface_spacing",
-                    "support_material_interface_contact_loops", "support_material_interface_layer_height",
+    for (const char *el : { "support_material_bottom_interface_pattern", "support_material_interface_contact_loops",
+                    "support_material_interface_layer_height",
                     "support_material_bottom_interface_expansion" })
         toggle_field(el, have_support_material && have_support_interface && !has_filled_supports);
-    for (const char *el : { "support_material_top_interface_pattern", "support_material_interface_extruder",
+    for (const char *el : { "support_material_top_interface_pattern", "support_material_interface_spacing",
+                    "support_material_interface_extruder",
                     "support_material_interface_speed", "support_material_interface_angle", "support_material_interface_angle_increment" })
         toggle_field(el, have_support_material && have_support_interface);
     toggle_field("support_material_interface_perimeters",

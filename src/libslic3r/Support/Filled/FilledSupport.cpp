@@ -6,7 +6,7 @@
 ///|/ 3. add explicit support-column volume slices on their own object layers,
 ///|/ 4. trim support by object XY clearance and optional build-plate-only masks,
 ///|/ 5. create one synchronized SupportLayer per useful object layer and fill it
-///|/    at 100% density with SupportMaterialInterface extrusions.
+///|/    with SupportMaterialInterface extrusions at the configured interface spacing.
 ///|/ This file does not include or call the legacy SupportMaterial pipeline.
 
 #include "FilledSupport.hpp"
@@ -404,10 +404,15 @@ void generate_filled_layer_extrusions(
         }
     }
 
+    // Fill expects a density, while the support option stores the free gap between
+    // adjacent interface lines. The first bed layer keeps its dedicated raft density.
+    const double interface_pitch = flow.spacing() + object.config().support_material_interface_spacing.value;
+    const float interface_density = float(std::min(1., flow.spacing() / interface_pitch));
+
     FillParams fill_params;
     fill_params.density = support_layer.bottom_z() <= EPSILON ?
         float(object.config().raft_first_layer_density.get_abs_value(1.f)) :
-        1.f;
+        interface_density;
     fill_params.dont_adjust = true;
     fill_params.config = &region_config;
     fill_params.flow = flow;

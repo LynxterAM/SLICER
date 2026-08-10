@@ -142,7 +142,8 @@ DynamicPrintConfig filled_support_interface_perimeter_config(
     return config;
 }
 
-DynamicPrintConfig filled_support_first_layer_config(double raft_density_percent, double raft_expansion)
+DynamicPrintConfig filled_support_first_layer_config(
+    double raft_density_percent, double raft_expansion, double interface_spacing = 0.)
 {
     DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
     config.set_deserialize_strict({
@@ -156,6 +157,7 @@ DynamicPrintConfig filled_support_first_layer_config(double raft_density_percent
     });
     config.set_key_value("raft_first_layer_density", new ConfigOptionPercent(raft_density_percent));
     config.set_key_value("raft_first_layer_expansion", new ConfigOptionFloat(raft_expansion));
+    config.set_key_value("support_material_interface_spacing", new ConfigOptionFloat(interface_spacing));
     return config;
 }
 
@@ -588,6 +590,73 @@ TEST_CASE("SupportMaterial: filled first layer uses raft density", "[SupportMate
     REQUIRE(dense_stats.only_interface);
     REQUIRE(sparse_stats.interface_path_length > 0.);
     REQUIRE(dense_stats.interface_path_length > sparse_stats.interface_path_length);
+}
+
+TEST_CASE("SupportMaterial: filled support uses interface spacing above the bed", "[SupportMaterial][FilledSupport]")
+{
+    Print dense_print;
+    init_and_process_print({ TestMesh::overhang }, dense_print, filled_support_first_layer_config(100., 0., 0.));
+    const SupportLayer *dense_layer = first_support_layer_above_bed(*dense_print.objects().front());
+    REQUIRE(dense_layer != nullptr);
+    SupportInterfaceStats dense_stats;
+    dense_layer->support_fills.visit(dense_stats);
+
+    Print sparse_print;
+    init_and_process_print({ TestMesh::overhang }, sparse_print, filled_support_first_layer_config(100., 0., 1.));
+    const SupportLayer *sparse_layer = first_support_layer_above_bed(*sparse_print.objects().front());
+    REQUIRE(sparse_layer != nullptr);
+    SupportInterfaceStats sparse_stats;
+    sparse_layer->support_fills.visit(sparse_stats);
+
+    REQUIRE(dense_stats.saw_entity);
+    REQUIRE(sparse_stats.saw_entity);
+    REQUIRE(dense_stats.only_interface);
+    REQUIRE(sparse_stats.only_interface);
+    REQUIRE(dense_stats.interface_path_length > sparse_stats.interface_path_length);
+}
+
+TEST_CASE("SupportMaterial: filled first layer density overrides interface spacing", "[SupportMaterial][FilledSupport]")
+{
+    Print dense_interface_print;
+    init_and_process_print({ TestMesh::overhang }, dense_interface_print, filled_support_first_layer_config(60., 0., 0.));
+    const SupportLayer *dense_interface_layer = first_bed_support_layer(*dense_interface_print.objects().front());
+    REQUIRE(dense_interface_layer != nullptr);
+    SupportInterfaceStats dense_interface_stats;
+    dense_interface_layer->support_fills.visit(dense_interface_stats);
+
+    Print sparse_interface_print;
+    init_and_process_print({ TestMesh::overhang }, sparse_interface_print, filled_support_first_layer_config(60., 0., 1.));
+    const SupportLayer *sparse_interface_layer = first_bed_support_layer(*sparse_interface_print.objects().front());
+    REQUIRE(sparse_interface_layer != nullptr);
+    SupportInterfaceStats sparse_interface_stats;
+    sparse_interface_layer->support_fills.visit(sparse_interface_stats);
+
+    REQUIRE(dense_interface_stats.saw_entity);
+    REQUIRE(sparse_interface_stats.saw_entity);
+    REQUIRE(dense_interface_stats.only_interface);
+    REQUIRE(sparse_interface_stats.only_interface);
+    REQUIRE(dense_interface_stats.interface_path_length == Approx(sparse_interface_stats.interface_path_length));
+}
+
+TEST_CASE("SupportMaterial: filled sparse interface spacing disables gap fill", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = filled_support_first_layer_config(100., 0., 1.);
+    config.set_deserialize_strict({
+        { "support_material_interface_gap_fill", 1 },
+        { "support_material_interface_perimeters", 1 }
+    });
+
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const PrintObject &object = *print.objects().front();
+    const SupportLayer *support_layer = first_support_layer_above_bed(object);
+    REQUIRE(support_layer != nullptr);
+
+    SupportInterfaceStats stats;
+    support_layer->support_fills.visit(stats);
+    REQUIRE(stats.saw_entity);
+    REQUIRE(stats.only_interface);
+    REQUIRE(stats.gap_fill_path_count == 0);
 }
 
 TEST_CASE("SupportMaterial: filled first layer disables gap fill below full raft density", "[SupportMaterial][FilledSupport]")
