@@ -26,7 +26,6 @@ class ConfigManipulation
     bool                is_msg_dlg_already_exist{ false };
 
     bool                m_is_initialized_support_material_overhangs_queried{ false };
-    bool                m_support_material_overhangs_queried{ false };
 
     // function to loading of changed configuration 
     std::function<void()>                                       load_config = nullptr;
@@ -73,7 +72,6 @@ public:
     void    initialize_support_material_overhangs_queried(bool queried)
     {
         m_is_initialized_support_material_overhangs_queried = true;
-        m_support_material_overhangs_queried = queried;
     }
 };
 
