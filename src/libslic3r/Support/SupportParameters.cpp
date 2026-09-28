@@ -105,10 +105,10 @@ SupportParameters::SupportParameters(const PrintObject &object)
             this->can_merge_support_regions = true;
     }
 
-    double interface_spacing = object_config.support_material_interface_spacing.value + this->support_material_interface_flow.spacing();
-    this->interface_density  = std::min(1., this->support_material_interface_flow.spacing() / interface_spacing);
-    double raft_interface_spacing = object_config.support_material_interface_spacing.value + this->raft_interface_flow.spacing();
-    this->raft_interface_density = std::min(1., this->raft_interface_flow.spacing() / raft_interface_spacing);
+    this->interface_density = support_material_interface_density(
+        object_config, this->support_material_interface_flow);
+    this->raft_interface_density = support_material_interface_density(
+        object_config, this->raft_interface_flow);
     double support_spacing   = object_config.support_material_spacing.value + this->support_material_flow.spacing();
     this->support_density    = std::min(1., this->support_material_flow.spacing() / support_spacing);
     if (object_config.support_material_interface_layers.value == 0) {
@@ -125,8 +125,8 @@ SupportParameters::SupportParameters(const PrintObject &object)
     this->raft_interface_fill_pattern = this->raft_interface_density > 0.95 ? ipRectilinear : ipSupportBase;
     this->contact_top_fill_pattern    = object_config.support_material_top_interface_pattern;
     this->contact_bottom_fill_pattern = object_config.support_material_bottom_interface_pattern;
-    this->interface_gap_fill          = object_config.support_material_interface_gap_fill.value &&
-                                        object_config.support_material_interface_spacing.value == 0.;
+    this->interface_gap_fill = object_config.support_material_interface_gap_fill.value &&
+                               this->interface_density >= 1. - EPSILON;
     this->interface_perimeters        = object_config.support_material_interface_perimeters.value < 0 ?
                                             0u :
                                             static_cast<unsigned int>(object_config.support_material_interface_perimeters.value);

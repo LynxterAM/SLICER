@@ -542,8 +542,13 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     bool has_filled_supports = have_support_material && support_material_style == smsFilled;
     bool have_support_interface = have_support_material &&
         (has_filled_supports || config->opt_int("support_material_interface_layers") > 0 || config->opt_int("support_material_bottom_interface_layers") > 0);
+    const ConfigOptionPercent *support_interface_fill_ratio =
+        config->option<ConfigOptionPercent>("support_material_interface_fill_ratio");
+    const bool support_interface_is_solid = support_interface_fill_ratio != nullptr && !support_interface_fill_ratio->is_phony() ?
+        support_interface_fill_ratio->value >= 100. - EPSILON :
+        config->opt_float("support_material_interface_spacing") <= EPSILON;
     const bool support_interface_gap_fill_available =
-        has_filled_supports || config->opt_float("support_material_interface_spacing") == 0.;
+        has_filled_supports || support_interface_is_solid;
     toggle_field("support_material_style", have_support_material);
     toggle_field("support_material_contact_distance_type", have_support_material);
     toggle_field("support_material_xy_spacing", have_support_material);
@@ -573,6 +578,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
                     "support_material_bottom_interface_expansion" })
         toggle_field(el, have_support_material && have_support_interface && !has_filled_supports);
     for (const char *el : { "support_material_top_interface_pattern", "support_material_interface_spacing",
+                    "support_material_interface_fill_ratio",
                     "support_material_interface_extruder",
                     "support_material_interface_speed", "support_material_interface_angle", "support_material_interface_angle_increment" })
         toggle_field(el, have_support_material && have_support_interface);

@@ -41,7 +41,8 @@ TreeSupportMeshGroupSettings::TreeSupportMeshGroupSettings(const PrintObject &pr
     // +1 makes the threshold inclusive
     this->support_angle             = 0.5 * M_PI - std::clamp<double>((config.support_material_threshold + 1) * M_PI / 180., 0., 0.5 * M_PI);
     this->support_line_width        = support_material_flow(&print_object, layer_height_mm).scaled_width();
-    this->support_roof_line_width   = support_material_interface_flow(&print_object, layer_height_mm).scaled_width();
+    const Flow support_interface_flow = support_material_interface_flow(&print_object, layer_height_mm);
+    this->support_roof_line_width   = support_interface_flow.scaled_width();
     //FIXME add it to SlicingParameters and reuse in both tree and normal supports?
     this->support_bottom_enable = config.support_material_interface_layers.value > 0 &&
         (!config.support_material_bottom_interface_layers.is_enabled() ||
@@ -91,7 +92,8 @@ TreeSupportMeshGroupSettings::TreeSupportMeshGroupSettings(const PrintObject &pr
 //    this->support_bottom_offset     = 
 //    this->support_wall_count        = config.support_material_with_sheath ? 1 : 0;
     this->support_wall_count        = 1;
-    this->support_roof_line_distance = scaled<coord_t>(config.support_material_interface_spacing.value) + this->support_roof_line_width;
+    const float support_interface_density_value = support_material_interface_density(config, support_interface_flow);
+    this->support_roof_line_distance = scale_t(support_interface_flow.spacing() / support_interface_density_value);
 //    this->minimum_support_area      = 
 //    this->minimum_bottom_area       = 
 //    this->support_offset            = 

@@ -2,11 +2,13 @@
 
 #include "libslic3r/ClipperUtils.hpp"
 #include "libslic3r/ExtrusionEntity.hpp"
+#include "libslic3r/Flow.hpp"
 #include "libslic3r/GCodeReader.hpp"
 #include "libslic3r/Layer.hpp"
 #include "libslic3r/Model.hpp"
 #include "libslic3r/PrintConfig.hpp"
 #include "libslic3r/Support/SupportParameters.hpp"
+#include "libslic3r/Support/TreeSupportCommon.hpp"
 #include "libslic3r/TriangleMesh.hpp"
 
 #include "test_data.hpp" // get access to init_print, etc
@@ -169,6 +171,32 @@ DynamicPrintConfig support_interface_gap_fill_config(double interface_spacing)
         { "support_material_interface_spacing", interface_spacing }
     });
     return config;
+}
+
+void set_support_interface_fill_ratio(DynamicPrintConfig &config, double fill_ratio)
+{
+    ConfigOptionPercent *fill_ratio_option =
+        config.option<ConfigOptionPercent>("support_material_interface_fill_ratio");
+    REQUIRE(fill_ratio_option != nullptr);
+    fill_ratio_option->value = fill_ratio;
+    config.value_changed("support_material_interface_fill_ratio", {});
+}
+
+coord_t organic_support_roof_line_distance(double fill_ratio)
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    config.set_deserialize_strict({
+        { "support_material", 1 },
+        { "support_material_style", "organic" },
+        { "support_material_interface_layers", 2 }
+    });
+    set_support_interface_fill_ratio(config, fill_ratio);
+
+    Print print;
+    Model model;
+    init_print({ TestMesh::overhang }, print, model, config);
+    const FFFTreeSupport::TreeSupportMeshGroupSettings settings(*print.objects().front());
+    return settings.support_roof_line_distance;
 }
 
 DynamicPrintConfig support_column_config(const char *support_style)
@@ -592,6 +620,109 @@ TEST_CASE("SupportMaterial: filled first layer uses raft density", "[SupportMate
     REQUIRE(dense_stats.interface_path_length > sparse_stats.interface_path_length);
 }
 
+TEST_CASE("SupportMaterial: interface spacing and density switch phony authority", "[SupportMaterial][Config]")
+{
+    DynamicPrintConfig config = DynamicPrintConfig::full_print_config();
+    ConfigOptionPercent *fill_ratio = config.option<ConfigOptionPercent>("support_material_interface_fill_ratio");
+    ConfigOptionFloat *free_spacing = config.option<ConfigOptionFloat>("support_material_interface_spacing");
+    REQUIRE(fill_ratio != nullptr);
+    REQUIRE(free_spacing != nullptr);
+    REQUIRE(fill_ratio->is_phony());
+    REQUIRE_FALSE(free_spacing->is_phony());
+    REQUIRE(fill_ratio->value == Approx(100.));
+
+    free_spacing->value = 0.3;
+    config.value_changed("support_material_interface_spacing", {});
+    REQUIRE(fill_ratio->is_phony());
+    REQUIRE_FALSE(free_spacing->is_phony());
+    REQUIRE(config.opt_serialize("support_material_interface_fill_ratio").empty());
+    const double density_from_spacing = fill_ratio->value / 100.;
+    REQUIRE(density_from_spacing >= 0.01);
+    REQUIRE(density_from_spacing < 1.);
+    const double nominal_flow_spacing = free_spacing->value * density_from_spacing / (1. - density_from_spacing);
+
+    fill_ratio->value = 40.;
+    config.value_changed("support_material_interface_fill_ratio", {});
+    REQUIRE_FALSE(fill_ratio->is_phony());
+    REQUIRE(free_spacing->is_phony());
+    REQUIRE(config.opt_serialize("support_material_interface_spacing").empty());
+    REQUIRE(free_spacing->value == Approx(nominal_flow_spacing * (1. / 0.4 - 1.)).epsilon(1e-6));
+
+    const double derived_spacing_before_height_change = free_spacing->value;
+    ConfigOptionFloat *layer_height = config.option<ConfigOptionFloat>("layer_height");
+    REQUIRE(layer_height != nullptr);
+    layer_height->value *= 0.75;
+    config.value_changed("layer_height", {});
+    REQUIRE_FALSE(fill_ratio->is_phony());
+    REQUIRE(fill_ratio->value == Approx(40.));
+    REQUIRE(free_spacing->is_phony());
+    REQUIRE(free_spacing->value != Approx(derived_spacing_before_height_change));
+
+    fill_ratio->value = 0.;
+    config.value_changed("support_material_interface_fill_ratio", {});
+    REQUIRE(fill_ratio->value == Approx(1.));
+    fill_ratio->value = 101.;
+    config.value_changed("support_material_interface_fill_ratio", {});
+    REQUIRE(fill_ratio->value == Approx(100.));
+}
+
+TEST_CASE("SupportMaterial: interface density directly configures classic and raft interfaces", "[SupportMaterial][Config]")
+{
+    DynamicPrintConfig config = support_interface_perimeter_config(0);
+    set_support_interface_fill_ratio(config, 37.);
+
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const FFFSupport::SupportParameters support_params(*print.objects().front());
+    REQUIRE(support_params.interface_density == Approx(0.37));
+    REQUIRE(support_params.raft_interface_density == Approx(0.37));
+}
+
+TEST_CASE("SupportMaterial: legacy interface spacing keeps flow-dependent density", "[SupportMaterial][Config]")
+{
+    DynamicPrintConfig config = support_interface_perimeter_config(0);
+    ConfigOptionFloat *free_spacing = config.option<ConfigOptionFloat>("support_material_interface_spacing");
+    REQUIRE(free_spacing != nullptr);
+    free_spacing->value = 0.42;
+    config.value_changed("support_material_interface_spacing", {});
+
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const FFFSupport::SupportParameters support_params(*print.objects().front());
+    const double expected_density = support_params.support_material_interface_flow.spacing() /
+        (support_params.support_material_interface_flow.spacing() + free_spacing->value);
+    REQUIRE(support_params.interface_density == Approx(expected_density));
+}
+
+TEST_CASE("SupportMaterial: classic interface gap fill accepts only full effective density", "[SupportMaterial][Config]")
+{
+    DynamicPrintConfig full_config = support_interface_perimeter_config(1);
+    full_config.set_deserialize_strict("support_material_interface_gap_fill", "1");
+    set_support_interface_fill_ratio(full_config, 100.);
+    Print full_print;
+    init_and_process_print({ TestMesh::overhang }, full_print, full_config);
+    REQUIRE(FFFSupport::SupportParameters(*full_print.objects().front()).interface_gap_fill);
+
+    DynamicPrintConfig sparse_config = support_interface_perimeter_config(1);
+    sparse_config.set_deserialize_strict("support_material_interface_gap_fill", "1");
+    set_support_interface_fill_ratio(sparse_config, 99.);
+    Print sparse_print;
+    init_and_process_print({ TestMesh::overhang }, sparse_print, sparse_config);
+    REQUIRE_FALSE(FFFSupport::SupportParameters(*sparse_print.objects().front()).interface_gap_fill);
+}
+
+TEST_CASE("SupportMaterial: interface density does not replace base density without interfaces", "[SupportMaterial][Config]")
+{
+    DynamicPrintConfig config = support_interface_perimeter_config(0);
+    config.set_deserialize_strict("support_material_interface_layers", "0");
+    set_support_interface_fill_ratio(config, 12.);
+
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const FFFSupport::SupportParameters support_params(*print.objects().front());
+    REQUIRE(support_params.interface_density == Approx(support_params.support_density));
+}
+
 TEST_CASE("SupportMaterial: filled support uses interface spacing above the bed", "[SupportMaterial][FilledSupport]")
 {
     Print dense_print;
@@ -615,6 +746,66 @@ TEST_CASE("SupportMaterial: filled support uses interface spacing above the bed"
     REQUIRE(dense_stats.interface_path_length > sparse_stats.interface_path_length);
 }
 
+TEST_CASE("SupportMaterial: filled support uses interface density above the bed", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig dense_config = filled_support_first_layer_config(60., 0.);
+    set_support_interface_fill_ratio(dense_config, 100.);
+    Print dense_print;
+    init_and_process_print({ TestMesh::overhang }, dense_print, dense_config);
+    const PrintObject &dense_object = *dense_print.objects().front();
+
+    DynamicPrintConfig sparse_config = filled_support_first_layer_config(60., 0.);
+    set_support_interface_fill_ratio(sparse_config, 25.);
+    Print sparse_print;
+    init_and_process_print({ TestMesh::overhang }, sparse_print, sparse_config);
+    const PrintObject &sparse_object = *sparse_print.objects().front();
+
+    const SupportLayer *dense_first_layer = first_bed_support_layer(dense_object);
+    const SupportLayer *sparse_first_layer = first_bed_support_layer(sparse_object);
+    const SupportLayer *dense_upper_layer = first_support_layer_above_bed(dense_object);
+    const SupportLayer *sparse_upper_layer = first_support_layer_above_bed(sparse_object);
+    REQUIRE(dense_first_layer != nullptr);
+    REQUIRE(sparse_first_layer != nullptr);
+    REQUIRE(dense_upper_layer != nullptr);
+    REQUIRE(sparse_upper_layer != nullptr);
+
+    SupportInterfaceStats dense_first_stats;
+    SupportInterfaceStats sparse_first_stats;
+    SupportInterfaceStats dense_upper_stats;
+    SupportInterfaceStats sparse_upper_stats;
+    dense_first_layer->support_fills.visit(dense_first_stats);
+    sparse_first_layer->support_fills.visit(sparse_first_stats);
+    dense_upper_layer->support_fills.visit(dense_upper_stats);
+    sparse_upper_layer->support_fills.visit(sparse_upper_stats);
+
+    REQUIRE(dense_first_stats.only_interface);
+    REQUIRE(sparse_first_stats.only_interface);
+    REQUIRE(dense_upper_stats.only_interface);
+    REQUIRE(sparse_upper_stats.only_interface);
+    REQUIRE(dense_first_stats.interface_path_length == Approx(sparse_first_stats.interface_path_length));
+    REQUIRE(dense_upper_stats.interface_path_length > sparse_upper_stats.interface_path_length);
+}
+
+TEST_CASE("SupportMaterial: filled sparse interface density disables gap fill", "[SupportMaterial][FilledSupport]")
+{
+    DynamicPrintConfig config = filled_support_first_layer_config(100., 0.);
+    config.set_deserialize_strict({
+        { "support_material_interface_gap_fill", 1 },
+        { "support_material_interface_perimeters", 1 }
+    });
+    set_support_interface_fill_ratio(config, 25.);
+
+    Print print;
+    init_and_process_print({ TestMesh::overhang }, print, config);
+    const SupportLayer *upper_layer = first_support_layer_above_bed(*print.objects().front());
+    REQUIRE(upper_layer != nullptr);
+    SupportInterfaceStats stats;
+    upper_layer->support_fills.visit(stats);
+    REQUIRE(stats.saw_entity);
+    REQUIRE(stats.only_interface);
+    REQUIRE(stats.gap_fill_path_count == 0);
+}
+
 TEST_CASE("SupportMaterial: filled first layer density overrides interface spacing", "[SupportMaterial][FilledSupport]")
 {
     Print dense_interface_print;
@@ -636,6 +827,13 @@ TEST_CASE("SupportMaterial: filled first layer density overrides interface spaci
     REQUIRE(dense_interface_stats.only_interface);
     REQUIRE(sparse_interface_stats.only_interface);
     REQUIRE(dense_interface_stats.interface_path_length == Approx(sparse_interface_stats.interface_path_length));
+}
+
+TEST_CASE("SupportMaterial: organic roof sampling follows interface density", "[SupportMaterial][TreeSupport]")
+{
+    const coord_t half_density_distance = organic_support_roof_line_distance(50.);
+    const coord_t quarter_density_distance = organic_support_roof_line_distance(25.);
+    REQUIRE(quarter_density_distance == Approx(2. * half_density_distance).margin(2.));
 }
 
 TEST_CASE("SupportMaterial: filled sparse interface spacing disables gap fill", "[SupportMaterial][FilledSupport]")

@@ -18,6 +18,7 @@
 namespace Slic3r {
 
 class PrintObject;
+class PrintObjectConfig;
 
 enum FlowRole {
     frExternalPerimeter,
@@ -177,6 +178,8 @@ private:
 extern Flow support_material_flow(const PrintObject *object, float layer_height = 0.f);
 extern Flow support_material_1st_layer_flow(const PrintObject *object, float layer_height = 0.f);
 extern Flow support_material_interface_flow(const PrintObject* object, float layer_height = 0.f);
+// Resolve the support interface density from the authoritative ratio or free-spacing option.
+extern float support_material_interface_density(const PrintObjectConfig &config, const Flow &flow);
 extern Flow raft_flow(const PrintObject* object, float layer_height = 0.f);
 extern Flow raft_interface_flow(const PrintObject* object, float layer_height = 0.f);
 

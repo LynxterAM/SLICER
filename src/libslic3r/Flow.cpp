@@ -13,6 +13,7 @@
 #include "Print.hpp"
 #include "Layer.hpp"
 #include "Layer.hpp"
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 
@@ -728,6 +729,16 @@ Flow support_material_interface_flow(const PrintObject* object, float layer_heig
         extruder_id < 0 ? 1 : object->config().get_computed_value("filament_max_overlap", extruder_id), //if can get an extruder, then use its param, or use full overlap if we don't know the extruder id.
         // bridge_flow_ratio
         0.f);
+}
+
+float support_material_interface_density(const PrintObjectConfig &config, const Flow &flow)
+{
+    if (!config.support_material_interface_fill_ratio.is_phony())
+        return std::clamp(float(config.support_material_interface_fill_ratio.get_abs_value(1.)), 0.01f, 1.f);
+
+    const double free_spacing = std::max(0., config.support_material_interface_spacing.value);
+    const double line_pitch = flow.spacing() + free_spacing;
+    return line_pitch > 0. ? float(std::min(1., flow.spacing() / line_pitch)) : 1.f;
 }
 
 Flow raft_flow(const PrintObject* object, float layer_height)

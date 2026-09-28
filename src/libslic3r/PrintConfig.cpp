@@ -6576,7 +6576,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Interface gap fill");
     def->category = OptionCategory::support;
     def->tooltip = L("Fill narrow unextruded gaps in dense support interfaces."
-        "\nOnly applies to filled supports or to solid support interfaces with zero interface pattern spacing.");
+        "\nOnly applies to filled supports or to solid support interfaces using 100% density or zero interface pattern spacing.");
     def->mode = comAdvancedE | comSuSi;
     def->set_default_value(new ConfigOptionBool(false));
 
@@ -6644,12 +6644,25 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvancedE | comSuSi;
     def->set_default_value(new ConfigOptionFloatOrPercent(0, false));
 
+    def = this->add("support_material_interface_fill_ratio", coPercent);
+    def->label = L("Interface fill density");
+    def->full_label = L("Support interface fill density");
+    def->category = OptionCategory::support;
+    def->tooltip = L("Density of support interface lines. You may set either this density or the free spacing between lines; the other value is calculated automatically.");
+    def->sidetext = L("%");
+    def->min = 1;
+    def->max = 100;
+    def->can_phony = true;
+    def->mode = comAdvancedE | comPrusa;
+    def->set_default_value((new ConfigOptionPercent(100))->set_phony(true));
+
     def = this->add("support_material_interface_spacing", coFloat);
     def->label = L("Interface pattern spacing");
     def->category = OptionCategory::support;
-    def->tooltip = L("Spacing between interface lines. Set zero to get a solid interface.");
+    def->tooltip = L("Free spacing between support interface lines. You may set either this spacing or the interface density; the other value is calculated automatically. Set zero to get a solid interface.");
     def->sidetext = L("mm");
     def->min = 0;
+    def->can_phony = true;
     def->mode = comAdvancedE | comPrusa;
     def->set_default_value(new ConfigOptionFloat(0));
 
@@ -10645,6 +10658,7 @@ std::unordered_set<std::string> prusa_export_to_remove_keys = {
 "support_material_interface_angle",
 "support_material_interface_angle_increment",
 "support_material_interface_fan_speed",
+"support_material_interface_fill_ratio",
 "support_material_interface_gap_fill",
 "support_material_interface_layer_height",
 "support_material_interface_perimeters",
@@ -11385,6 +11399,97 @@ const TYPE* find_option(const t_config_option_key &opt_key,const  DynamicPrintCo
     return nullptr;
 }
 
+// Compute the representative support-interface line spacing used only to display
+// the phony member of the density / free-spacing pair.
+static bool nominal_support_material_interface_spacing(
+    const DynamicPrintConfig                    &config,
+    const std::vector<const DynamicPrintConfig*> &config_collection,
+    double                                      &flow_spacing)
+{
+    const ConfigOptionFloat *layer_height = find_option<ConfigOptionFloat>("layer_height", &config, config_collection);
+    const ConfigOptionFloats *nozzle_diameters = find_option<ConfigOptionFloats>("nozzle_diameter", &config, config_collection);
+    const ConfigOptionFloatOrPercent *support_width =
+        find_option<ConfigOptionFloatOrPercent>("support_material_extrusion_width", &config, config_collection);
+    const ConfigOptionFloatOrPercent *default_width =
+        find_option<ConfigOptionFloatOrPercent>("extrusion_width", &config, config_collection);
+    const ConfigOptionFloatOrPercent *default_spacing =
+        find_option<ConfigOptionFloatOrPercent>("extrusion_spacing", &config, config_collection);
+    if (layer_height == nullptr || layer_height->value <= EPSILON || nozzle_diameters == nullptr ||
+        support_width == nullptr || default_width == nullptr || default_spacing == nullptr)
+        return false;
+
+    float nozzle_diameter = 0.f;
+    for (double diameter : nozzle_diameters->get_values())
+        nozzle_diameter = std::max(nozzle_diameter, float(diameter));
+    if (nozzle_diameter <= 0.f)
+        return false;
+
+    float filament_overlap = 1.f;
+    const ConfigOptionPercents *filament_overlaps =
+        find_option<ConfigOptionPercents>("filament_max_overlap", &config, config_collection);
+    if (filament_overlaps != nullptr && filament_overlaps->size() > 0)
+        filament_overlap = float(filament_overlaps->get_abs_value(0, 1.));
+
+    const ConfigOptionFloatOrPercent &width = support_width->value > 0. ? *support_width : *default_width;
+    const ConfigOptionFloatOrPercent &spacing = support_width->value > 0. ? *support_width : *default_spacing;
+    try {
+        const Flow flow = Flow::new_from_config_width(
+            frSupportMaterialInterface, width, spacing, nozzle_diameter,
+            float(layer_height->value), filament_overlap, 0.f);
+        flow_spacing = flow.spacing();
+    } catch (const FlowError &) {
+        return false;
+    }
+    return flow_spacing > 0.;
+}
+
+// Keep exactly one support-interface density representation authoritative. The
+// other option remains phony and follows the nominal flow for UI feedback only.
+static bool update_support_material_interface_fill_pair(
+    DynamicPrintConfig                         &config,
+    const std::vector<const DynamicPrintConfig*> &config_collection,
+    const t_config_option_key                  *changed_key)
+{
+    ConfigOptionPercent *fill_ratio = config.option<ConfigOptionPercent>("support_material_interface_fill_ratio");
+    ConfigOptionFloat *free_spacing = config.option<ConfigOptionFloat>("support_material_interface_spacing");
+    if (fill_ratio == nullptr || free_spacing == nullptr)
+        return false;
+
+    const bool ratio_changed = changed_key != nullptr && *changed_key == "support_material_interface_fill_ratio";
+    const bool spacing_changed = changed_key != nullptr && *changed_key == "support_material_interface_spacing";
+    const bool ratio_is_authoritative = ratio_changed ||
+        (!spacing_changed && !fill_ratio->is_phony() && free_spacing->is_phony());
+
+    const bool old_ratio_phony = fill_ratio->is_phony();
+    const bool old_spacing_phony = free_spacing->is_phony();
+    const double old_ratio = fill_ratio->value;
+    const double old_spacing = free_spacing->value;
+
+    double nominal_spacing = 0.;
+    const bool has_nominal_spacing = nominal_support_material_interface_spacing(
+        config, config_collection, nominal_spacing);
+    if (ratio_is_authoritative) {
+        fill_ratio->value = std::clamp(fill_ratio->value, 1., 100.);
+        fill_ratio->set_phony(false);
+        free_spacing->set_phony(true);
+        if (has_nominal_spacing) {
+            const double density = fill_ratio->value / 100.;
+            free_spacing->value = nominal_spacing * (1. / density - 1.);
+        }
+    } else {
+        free_spacing->value = std::max(0., free_spacing->value);
+        free_spacing->set_phony(false);
+        fill_ratio->set_phony(true);
+        if (has_nominal_spacing) {
+            const double density = nominal_spacing / (nominal_spacing + free_spacing->value);
+            fill_ratio->value = std::clamp(100. * density, 1., 100.);
+        }
+    }
+
+    return old_ratio_phony != fill_ratio->is_phony() || old_spacing_phony != free_spacing->is_phony() ||
+        old_ratio != fill_ratio->value || old_spacing != free_spacing->value;
+}
+
 const DynamicPrintConfig* DynamicPrintConfig::update_phony(const std::vector<const DynamicPrintConfig*> config_collection, bool exclude_default_extrusion /*= false*/) {
     const DynamicPrintConfig* something_changed = nullptr;
     //update width/spacing links
@@ -11407,11 +11512,17 @@ const DynamicPrintConfig* DynamicPrintConfig::update_phony(const std::vector<con
         }
     }
 
+    if (update_support_material_interface_fill_pair(*this, config_collection, nullptr))
+        something_changed = this;
+
     return something_changed;
 }
 
 //note: width<-> spacing conversion is done via float, so max 6-7 digit of precision.
 const DynamicPrintConfig* DynamicPrintConfig::value_changed(const t_config_option_key& opt_key, const std::vector<const DynamicPrintConfig*> config_collection) {
+    if (opt_key == "support_material_interface_fill_ratio" || opt_key == "support_material_interface_spacing")
+        return update_support_material_interface_fill_pair(*this, config_collection, &opt_key) ? this : nullptr;
+
     if (opt_key == "layer_height") {
         const ConfigOptionFloat* layer_height_option = find_option<ConfigOptionFloat>("layer_height", this, config_collection);
         //if bad layer height, slip to be able to go to the check part without outputing exceptions.
@@ -11791,6 +11902,10 @@ const DynamicPrintConfig* DynamicPrintConfig::value_changed(const t_config_optio
             }
         }
     }
+    if (opt_key == "nozzle_diameter" || opt_key == "extrusion_width" || opt_key == "extrusion_spacing" ||
+        opt_key == "support_material_extrusion_width")
+        something_changed |= update_support_material_interface_fill_pair(*this, config_collection, nullptr);
+
     //update phony counterpark of 0-set fields
     // now they show 0, no need to update them
     //if (opt_key == "extrusion_width" || opt_key == "extrusion_spacing") {

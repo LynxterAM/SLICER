@@ -802,6 +802,7 @@ static std::vector<std::string> s_Preset_print_options {
         "support_material_interface_contact_loops",
         "support_material_interface_gap_fill",
         "support_material_interface_perimeters",
+        "support_material_interface_fill_ratio",
         "support_material_interface_spacing",
         "support_material_contact_distance_type",
         "support_material_contact_distance_top",
