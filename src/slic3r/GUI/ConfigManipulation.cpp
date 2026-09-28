@@ -408,7 +408,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig* config)
     for (auto el : { "overhangs_width_speed", "overhangs_flow_ratio" })
         toggle_field(el, have_overhangs);
     bool have_overhangs_speed = have_overhangs && config->option("overhangs_width_speed")->is_enabled();
-    for (auto el : { "overhangs_speed", "overhangs_dynamic_speed", "overhangs_flow_ratio" })
+    for (auto el : { "overhangs_speed", "overhangs_dynamic_speed" })
         toggle_field(el, have_overhangs_speed);
     bool have_overhangs_flow = have_overhangs && config->option("overhangs_flow_ratio")->is_enabled();
     for (auto el : { "overhangs_width", "overhangs_dynamic_flow", "overhangs_type" })
