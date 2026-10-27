@@ -631,28 +631,24 @@ void UpdateConfigDialog::add_vendor_in_list(wxWindow *parent, VendorSync &vendor
 
     ////// upgrade //////
     wxStaticText *msg_synch = nullptr;
-    if (vendor.profile.config_update_rest.empty()) {
-        if (!vendor.is_installed && !vendor.available_profiles.empty()) {
-            wxString config_version_str = vendor.best->config_version.to_string();
-            wxString msg = format(_L("Install %1% (local)"), config_version_str);
-            wxButton *bt_upgrade = new wxButton(parent, wxID_ANY, msg);
-            bt_upgrade->SetToolTip(
-                _L("Click this button to create a snapshot and install this vendor bundle to the locally available "
-                   "version bundled with the slicer, or copied by a user. "
-                   "\nTo upgrade it, since it doesn't have an online repository, you need to paste the new vendor "
-                   ".ini file in your configuration/cache/vendor directory. "
-                   "\nA new version of the slicer may also come bundled with a new version of the profile."));
-            versions_sizer->Add(bt_upgrade, wxGBPosition(line_num, 3), wxGBSpan(1, 1), wxEXPAND, 2);
-            bt_upgrade->Bind(wxEVT_BUTTON, ([this, vendor_id, best_version](wxCommandEvent &e) {
-                this->wait_dialog.reset(new wxBusyInfo(_L("Installing the local preset, please wait")));
-                this->m_data.install_vendor(vendor_id, best_version, [this](std::string error_msg) {
-                    // end of waiting dialog (yes, it has to be called without any exception)
-                    this->wait_dialog.reset();
-                    this->request_show_error_msg(error_msg);
-                    this->request_rebuild_ui();
-                });
-            }));
-        } else if (vendor.can_upgrade) {
+    if (!vendor.is_installed && vendor.best && !best_version.local_file.empty() &&
+        boost::filesystem::exists(best_version.local_file)) {
+        wxString config_version_str = vendor.best->config_version.to_string();
+        wxString msg = format(_L("Install %1% (local)"), config_version_str);
+        wxButton *bt_upgrade = new wxButton(parent, wxID_ANY, msg);
+        bt_upgrade->SetToolTip(_L("Click this button to create a snapshot and install this vendor bundle available in the local repository."));
+        versions_sizer->Add(bt_upgrade, wxGBPosition(line_num, 3), wxGBSpan(1, 1), wxEXPAND, 2);
+        bt_upgrade->Bind(wxEVT_BUTTON, ([this, vendor_id, best_version](wxCommandEvent &e) {
+            this->wait_dialog.reset(new wxBusyInfo(_L("Installing the local preset, please wait")));
+            this->m_data.install_vendor(vendor_id, best_version, [this](std::string error_msg) {
+                // end of waiting dialog (yes, it has to be called without any exception)
+                this->wait_dialog.reset();
+                this->request_show_error_msg(error_msg);
+                this->request_rebuild_ui();
+            });
+        }));
+    } else if (vendor.profile.config_update_rest.empty()) {
+        if (vendor.can_upgrade) {
             assert(vendor.best->config_version > vendor.profile.config_version);
             wxString config_version_str = vendor.best->config_version.to_string();
             wxString msg = vendor.is_installed ? format(_L("Upgrade to %1%"), config_version_str) :
@@ -902,7 +898,11 @@ void UpdateConfigDialog::build_ui() {
             }
 
             this->m_data.reload_all_vendors();
-            this->request_rebuild_ui();
+            this->wait_dialog.reset(new wxBusyInfo(_L("Updating the presets, please wait")));
+            this->m_data.sync_async([this](int) {
+                this->wait_dialog.reset();
+                this->request_rebuild_ui();
+            });
         } catch (std::exception e) {
             MessageDialog msg_dlg(this,
                         format(_L("Failed to read this vendor bundle at '%1%'"), path.lexically_normal().string()),

@@ -22471,7 +22471,7 @@ msgid "Unable to write into the hard disk drive."
 msgstr "Impossible d'écrire sur le disque dur."
 
 msgid "Unchecked"
-msgstr "Décoché"
+msgstr "Non vérifié"
 
 msgid "Uninstall"
 msgstr "Désinstaller"

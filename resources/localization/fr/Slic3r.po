@@ -21203,7 +21203,7 @@ msgid "Unavailable for this method."
 msgstr "Non disponible pour cette méthode."
 
 msgid "Unchecked"
-msgstr "Décoché"
+msgstr "Non vérifié"
 
 msgid "Undef"
 msgstr "Indéfini"
